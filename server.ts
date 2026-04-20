@@ -1,44 +1,40 @@
-import 'dotenv/config';
+import "dotenv/config";
 import express from "express";
 import path from "path";
-import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
-import apiRouter from "./src/server/api.js"; // Use .js for ESM compatibility if needed, or just api
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import apiRouter from "./src/server/api.js";
 
 async function startServer() {
   const app = express();
-  const PORT = 3001;
+  const port = Number(process.env.PORT || 3001);
+  const isProduction = process.env.NODE_ENV === "production";
 
   app.use(express.json());
-
-  // API Routes
   app.use("/api", apiRouter);
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
+
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.resolve("dist");
+
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on port ${port}`);
+    console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
   });
 }
 
-startServer().catch((err) => {
-  console.error("Failed to start server:", err);
+startServer().catch((error) => {
+  console.error("Failed to start server:", error);
   process.exit(1);
 });

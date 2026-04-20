@@ -274,7 +274,7 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
     setInviteEmailStatus(null);
 
     try {
-      const response = await fetch('/api/invitations/email', {
+      const response = await fetch('/api/invitations/email/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
