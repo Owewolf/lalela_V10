@@ -1,0 +1,22 @@
+{
+  "name": "Lalela Community Platform",
+  "short_name": "Lalela",
+  "description": "Community platform for notices, local trade, chat, and emergency coordination.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d3d47",
+  "theme_color": "#0d3d47",
+  "icons": [
+    {
+      "src": "/images/Lalela Favicon - White on Green.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/Lalela Favicon - White on Green.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Epilogue:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* Keep Leaflet maps below modals/overlays */
+.leaflet-container {
+  z-index: 0;
+}
+
+@theme {
+  --color-primary: #0d3d47;
+  --color-primary-container: #1e5667;
+  --color-secondary: #9c4421;
+  --color-secondary-container: #fc7127;
+  --color-tertiary-fixed: #ffddb9;
+  --color-surface: #fff8f0;
+  --color-surface-bright: #fff8f0;
+  --color-surface-dim: #dbdad7;
+  --color-surface-container: #efeeeb;
+  --color-surface-container-low: #f4f3f1;
+  --color-surface-container-high: #e9e8e5;
+  --color-surface-container-highest: #e3e2e0;
+  --color-on-surface: #1a1c1a;
+  --color-on-surface-variant: #424842;
+  --color-outline: #737971;
+  --color-outline-variant: #c2c8bf;
+  --color-error: #ba1a1a;
+
+  --font-headline: "Epilogue", sans-serif;
+  --font-body: "Manrope", sans-serif;
+  --font-label: "Manrope", sans-serif;
+
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --shadow-ambient: 0 12px 32px rgba(26, 28, 26, 0.06);
+}
+
+@layer base {
+  body {
+    @apply bg-surface font-body text-on-surface antialiased;
+  }
+}
+
+@layer utilities {
+  .clay-gradient {
+    background: linear-gradient(135deg, #9c4421 0%, #fc7127 100%);
+  }
+  
+  .frosted-earth {
+    @apply bg-surface-bright/70 backdrop-blur-xl;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+
+  .marker-label {
+    background-color: white;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid rgba(19, 78, 66, 0.2);
+    font-size: 10px;
+    font-weight: 800;
+    color: #134E42;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    white-space: nowrap;
+  }
+
+  .custom-popup .leaflet-popup-content-wrapper {
+    @apply rounded-3xl shadow-ambient border border-outline-variant/10 p-0 overflow-hidden bg-white;
+  }
+
+  .custom-popup .leaflet-popup-content {
+    margin: 0 !important;
+    width: auto !important;
+  }
+
+  .custom-popup .leaflet-popup-tip {
+    @apply bg-white;
+  }
+
+  /* Enhanced Marker Styles */
+  .custom-div-icon div {
+    @apply transition-all duration-300 hover:scale-125 hover:shadow-xl;
+  }
+
+  .bg-emerald-500.rounded-full {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .bg-secondary.rounded-full {
+    box-shadow: 0 0 12px rgba(156, 68, 33, 0.4), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Specific style requested via selector */
+  div#root > div > main > section:nth-of-type(4) div.leaflet-marker-pane > div:nth-of-type(1) div.bg-emerald-500 {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+    border-color: white;
+    transform: scale(1.15);
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Parkwood Community",
+  "description": "A digital town square for the Parkwood community, connecting neighbors with local businesses and services.",
+  "requestFramePermissions": ["geolocation"]
+}

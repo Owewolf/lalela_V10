@@ -1,0 +1,487 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the user." },
+        "name": { "type": "string", "description": "The full name of the user." },
+        "email": { "type": "string", "format": "email", "description": "The email address of the user." },
+        "phone": { "type": "string", "description": "The phone number of the user." },
+        "address": { "type": "string", "description": "The physical address of the user." },
+        "profile_image": { "type": "string", "description": "The profile image URL." },
+        "license_status": { "type": "string", "enum": ["UNLICENSED", "LICENSED"], "description": "The license status of the user." },
+        "status": { "type": "string", "enum": ["ACTIVE", "READ-ONLY"], "description": "The operational status of the user." },
+        "two_factor_enabled": { "type": "boolean", "description": "Whether 2FA is enabled." },
+        "two_factor_method": { "type": "string", "enum": ["SMS", "App"], "description": "The 2FA method." },
+        "login_alerts_enabled": { "type": "boolean", "description": "Whether login alerts are enabled." },
+        "profile_visibility": { "type": "string", "enum": ["Community Only", "Private"], "description": "Profile visibility setting." },
+        "pii_visibility": { "type": "string", "enum": ["Admins only", "Community members", "Nobody"], "description": "PII visibility setting." },
+        "last_password_changed": { "type": "string", "format": "date-time", "description": "When the password was last changed." },
+        "security_score": { "type": "string", "enum": ["Low", "Medium", "High"], "description": "Calculated security score." },
+        "access_type": { "type": "string", "enum": ["Trial", "1-Year Member", "Lifetime Access"], "description": "Type of access." },
+        "expiry_date": { "type": "string", "format": "date-time", "description": "Access expiry date." },
+        "created_at": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
+        "defaultLocation": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" }
+          },
+          "description": "The user's default location for posts and businesses."
+        },
+        "locationSharingEnabled": { "type": "boolean", "description": "Whether location sharing is enabled." },
+        "isSecurityMember": { "type": "boolean", "description": "Whether the user is a security member." },
+        "liveLocation": {
+          "type": "object",
+          "properties": {
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" },
+            "timestamp": { "type": "string", "format": "date-time" }
+          },
+          "description": "The user's live location."
+        },
+        "notification_preferences": {
+          "type": "object",
+          "properties": {
+            "globalEnabled": { "type": "boolean" },
+            "generalNotices": { "type": "boolean" },
+            "listingUpdates": { "type": "boolean" },
+            "communityActivity": { "type": "boolean" },
+            "businessActivity": { "type": "boolean" },
+            "priorityCommunityIds": { "type": "array", "items": { "type": "string" } }
+          },
+          "description": "User notification preferences. Emergency notifications are always on."
+        }
+      },
+      "required": ["id", "name", "email", "license_status", "status"]
+    },
+    "Community": {
+      "title": "Community",
+      "description": "A community created by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the community." },
+        "name": { "type": "string", "description": "The name of the community." },
+        "owner_id": { "type": "string", "description": "The ID of the user who owns the community." },
+        "type": { "type": "string", "enum": ["TRIAL", "LICENSED"], "description": "The type of community license." },
+        "license_id": { "type": "string", "description": "The ID of the license associated with the community." },
+        "trial_end_date": { "type": "string", "format": "date-time", "description": "The date when the trial ends." },
+        "status": { "type": "string", "enum": ["ACTIVE", "READ-ONLY"], "description": "The operational status of the community." },
+        "isEmergencyMode": { "type": "boolean", "description": "Whether the community is in emergency mode." },
+        "coverageArea": {
+          "type": "object",
+          "properties": {
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" },
+            "radius": { "type": "number", "description": "Coverage radius in km." },
+            "location_name": { "type": "string" }
+          },
+          "description": "The defined coverage area for the community."
+        }
+      },
+      "required": ["id", "name", "owner_id", "type", "trial_end_date", "status"]
+    },
+    "CommunityMember": {
+      "title": "CommunityMember",
+      "description": "A member of a community.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string", "description": "The ID of the user." },
+        "community_id": { "type": "string", "description": "The ID of the community." },
+        "role": { "type": "string", "enum": ["ADMIN", "MODERATOR", "MEMBER"], "description": "The role of the user in the community." },
+        "joined_at": { "type": "string", "format": "date-time", "description": "The date when the user joined the community." },
+        "license_expiry": { "type": "string", "format": "date-time", "description": "The date when the user's community license expires." },
+        "status": { "type": "string", "enum": ["ACTIVE", "READ-ONLY", "UNLICENSED"], "description": "The operational status of the member." },
+        "latitude": { "type": "number", "description": "Last known latitude of the member." },
+        "longitude": { "type": "number", "description": "Last known longitude of the member." },
+        "locationSharingEnabled": { "type": "boolean", "description": "Whether the member has enabled location sharing." }
+      },
+      "required": ["user_id", "community_id", "role", "joined_at", "license_expiry", "status"]
+    },
+    "License": {
+      "title": "License",
+      "description": "A platform license owned by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the license." },
+        "user_id": { "type": "string", "description": "The ID of the user who owns the license." },
+        "type": { "type": "string", "enum": ["PERSONAL", "COMMUNITY"], "description": "The type of license." },
+        "status": { "type": "string", "enum": ["ACTIVE", "USED"], "description": "The status of the license." }
+      },
+      "required": ["id", "user_id", "type", "status"]
+    },
+    "Charity": {
+      "title": "Charity",
+      "description": "A charitable cause within a community.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the charity." },
+        "community_id": { "type": "string", "description": "The ID of the community." },
+        "name": { "type": "string", "description": "The name of the charity." },
+        "description": { "type": "string", "description": "The mission and impact story." },
+        "category": { "type": "string", "enum": ["Community Support", "Education", "Health", "Animal Welfare", "Disaster Relief"], "description": "The category of the charity." },
+        "percentage": { "type": "number", "description": "Percentage added to the listing price." },
+        "latitude": { "type": "number", "description": "Latitude of the charity." },
+        "longitude": { "type": "number", "description": "Longitude of the charity." },
+        "location_name": { "type": "string", "description": "Name of the location." },
+        "contactPhone": { "type": "string", "description": "Contact phone number." },
+        "contactEmail": { "type": "string", "description": "Contact email address." },
+        "website": { "type": "string", "description": "Website URL." },
+        "logo": { "type": "string", "description": "Logo image URL." },
+        "coverImage": { "type": "string", "description": "Cover image URL." },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags like Urgent, Ongoing, Verified." },
+        "isVerified": { "type": "boolean", "description": "Whether the charity is verified." },
+        "isFeatured": { "type": "boolean", "description": "Whether the charity is featured." },
+        "urgency": { "type": "string", "enum": ["Normal", "High", "Critical"], "description": "The urgency level." },
+        "status": { "type": "string", "enum": ["Active", "Pending", "Flagged", "Archived"], "description": "The operational status." },
+        "linkedBusinessIds": { "type": "array", "items": { "type": "string" }, "description": "IDs of supporting businesses." },
+        "totalRaised": { "type": "number", "description": "Total funds raised for this charity." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
+        "isApprovedSuggestion": { "type": "boolean", "description": "Whether this charity was suggested by a member and approved." },
+        "suggestedBy": { "type": "string", "description": "Name of the member who suggested this charity." }
+      },
+      "required": ["id", "community_id", "name", "description", "category", "percentage", "latitude", "longitude", "status", "urgency"]
+    },
+    "CharitySuggestion": {
+      "title": "CharitySuggestion",
+      "description": "A suggestion for a charitable cause submitted by a community member.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "community_id": { "type": "string" },
+        "suggested_by_id": { "type": "string" },
+        "suggested_by_name": { "type": "string" },
+        "name": { "type": "string", "description": "The name of the suggested charity." },
+        "description": { "type": "string", "description": "Mission and impact story." },
+        "suggested_donation_amount": { "type": "number", "description": "Required suggested donation percentage (whole number 1-100)." },
+        "reason": { "type": "string", "description": "Reason for suggestion." },
+        "website": { "type": "string", "description": "Optional website link." },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "The status of the suggestion." },
+        "admin_feedback": { "type": "string", "description": "Feedback from admin upon approval/rejection." },
+        "created_at": { "type": "string", "format": "date-time" },
+        "processed_at": { "type": "string", "format": "date-time" },
+        "processed_by_id": { "type": "string" }
+      },
+      "required": ["id", "community_id", "suggested_by_id", "name", "description", "reason", "suggested_donation_amount", "status", "created_at"]
+    },
+    "UserBusiness": {
+      "title": "UserBusiness",
+      "description": "A business owned by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "owner_id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string" },
+        "description": { "type": "string" },
+        "image": { "type": "string" },
+        "communityIds": { "type": "array", "items": { "type": "string" } },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "address": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "charityId": { "type": "string", "description": "Linked charity ID." }
+      },
+      "required": ["id", "owner_id", "name", "category", "description", "communityIds", "latitude", "longitude", "address"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A community notice or marketplace listing.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "community_id": { "type": "string" },
+        "author_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["listing", "notice"] },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "community_price": { "type": "number", "description": "The price for community members (Local)." },
+        "public_price": { "type": "number", "description": "The price for non-members (Public)." },
+        "isPublic": { "type": "boolean" },
+        "isCommunityPick": { "type": "boolean", "description": "Whether the post is highlighted as a community pick." },
+        "charityId": { "type": "string" },
+        "charityPercentage": { "type": "number" },
+        "charity_amount": { "type": "number", "description": "The calculated charity contribution amount." },
+        "urgency": { "type": "string", "enum": ["low", "normal", "high", "emergency"] },
+        "priority": { "type": "string", "enum": ["normal", "emergency"], "description": "Priority level for notices." },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "image": { "type": "string" },
+        "posts_image": { "type": "string", "description": "The image for the post (listing or notice)." }
+      },
+      "required": ["id", "community_id", "author_id", "type", "title", "description", "timestamp"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "A report filed against a post or user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "community_id": { "type": "string" },
+        "reporter_id": { "type": "string" },
+        "target_id": { "type": "string", "description": "ID of the post or user being reported." },
+        "target_type": { "type": "string", "enum": ["post", "user"] },
+        "reason": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved", "dismissed"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "resolved_at": { "type": "string", "format": "date-time" },
+        "resolver_id": { "type": "string" }
+      },
+      "required": ["id", "community_id", "reporter_id", "target_id", "target_type", "reason", "status", "created_at"]
+    },
+    "ModerationLog": {
+      "title": "ModerationLog",
+      "description": "A log of moderation actions taken.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "community_id": { "type": "string" },
+        "moderator_id": { "type": "string" },
+        "action": { "type": "string", "enum": ["approve", "reject", "delete", "warn", "ban"] },
+        "target_id": { "type": "string" },
+        "target_type": { "type": "string", "enum": ["post", "user", "report"] },
+        "reason": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "community_id", "moderator_id", "action", "target_id", "target_type", "timestamp"]
+    },
+    "SecurityEvent": {
+      "title": "SecurityEvent",
+      "description": "A security-related event or alert.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "community_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["unauthorized_access", "suspicious_activity", "emergency_alert"] },
+        "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "description": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "resolved": { "type": "boolean" }
+      },
+      "required": ["id", "community_id", "type", "severity", "description", "timestamp", "resolved"]
+    },
+    "SystemMetric": {
+      "title": "SystemMetric",
+      "description": "Aggregated system metrics for the dashboard.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "community_id": { "type": "string" },
+        "active_users": { "type": "number" },
+        "pending_approvals": { "type": "number" },
+        "total_charity_raised": { "type": "number" },
+        "active_alerts": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "community_id", "active_users", "pending_approvals", "total_charity_raised", "active_alerts", "timestamp"]
+    },
+    "PublicUser": {
+      "title": "PublicUser",
+      "description": "Non-sensitive user profile data accessible to other users.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The full name of the user." },
+        "profile_image": { "type": "string", "description": "The profile image URL." },
+        "updated_at": { "type": "string", "format": "date-time", "description": "Last update timestamp." }
+      }
+    },
+    "UserSearch": {
+      "title": "UserSearch",
+      "description": "A mapping of email to user ID for searching purposes.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "name": { "type": "string", "description": "The user's full name." },
+        "email": { "type": "string", "description": "The user's email address." }
+      },
+      "required": ["uid", "name", "email"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "An active user session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "device_name": { "type": "string" },
+        "location": { "type": "string" },
+        "last_active": { "type": "string", "format": "date-time" },
+        "ip_address": { "type": "string" }
+      },
+      "required": ["id", "device_name", "last_active"]
+    },
+    "MemberLocation": {
+      "title": "MemberLocation",
+      "description": "Live location of a community member.",
+      "type": "object",
+      "properties": {
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "name": { "type": "string" },
+        "image": { "type": "string" },
+        "role": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["latitude", "longitude", "timestamp"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A chat conversation between users or within a community.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" }, "description": "User IDs of participants." },
+        "type": { "type": "string", "enum": ["direct", "listing", "community", "emergency"] },
+        "communityId": { "type": "string", "description": "Optional community ID for context." },
+        "listingId": { "type": "string", "description": "Optional listing ID for context." },
+        "emergencyId": { "type": "string", "description": "Optional emergency ID for context." },
+        "lastMessage": { "type": "string" },
+        "lastMessageAt": { "type": "string", "format": "date-time" },
+        "priority": { "type": "string", "enum": ["normal", "high"] },
+        "unreadCount": { "type": "object", "description": "Map of userId to unread count." },
+        "metadata": { "type": "object", "description": "Optional metadata like listing title/image." }
+      },
+      "required": ["id", "participants", "type", "lastMessageAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message within a conversation.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "messageType": { "type": "string", "enum": ["text", "image", "system"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "readBy": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["sent", "delivered", "read"] }
+      },
+      "required": ["id", "senderId", "text", "messageType", "createdAt"]
+    },
+    "CommunityInvitation": {
+      "title": "CommunityInvitation",
+      "description": "An invitation to join a community.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "community_id": { "type": "string" },
+        "community_name": { "type": "string" },
+        "invited_user_id": { "type": "string" },
+        "invited_by_admin_id": { "type": "string" },
+        "role": { "type": "string", "enum": ["MEMBER", "MODERATOR"] },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "community_id", "invited_user_id", "invited_by_admin_id", "role", "status", "created_at"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["invitation", "system", "alert"] },
+        "link": { "type": "string" },
+        "read": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["id", "user_id", "title", "message", "type", "read", "created_at"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "User profiles."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "Notification" },
+      "description": "User notifications."
+    },
+    "/community_invitations/{invitationId}": {
+      "schema": { "$ref": "CommunityInvitation" },
+      "description": "Community invitations."
+    },
+    "/users_public/{userId}": {
+      "schema": { "$ref": "PublicUser" },
+      "description": "Public user profile data."
+    },
+    "/user_search/{email}": {
+      "schema": { "$ref": "UserSearch" },
+      "description": "Mapping of email to user ID for searching."
+    },
+    "/communities/{communityId}": {
+      "schema": { "$ref": "Community" },
+      "description": "Community records."
+    },
+    "/communities/{communityId}/members/{userId}": {
+      "schema": { "$ref": "CommunityMember" },
+      "description": "Community membership records."
+    },
+    "/communities/{communityId}/charities/{charityId}": {
+      "schema": { "$ref": "Charity" },
+      "description": "Charitable causes within a community."
+    },
+    "/licenses/{licenseId}": {
+      "schema": { "$ref": "License" },
+      "description": "Platform licenses."
+    },
+    "/user_businesses/{businessId}": {
+      "schema": { "$ref": "UserBusiness" },
+      "description": "User-owned businesses."
+    },
+    "/communities/{communityId}/posts/{postId}": {
+      "schema": { "$ref": "Post" },
+      "description": "Community posts and listings."
+    },
+    "/communities/{communityId}/reports/{reportId}": {
+      "schema": { "$ref": "Report" },
+      "description": "Moderation reports."
+    },
+    "/communities/{communityId}/moderation_logs/{logId}": {
+      "schema": { "$ref": "ModerationLog" },
+      "description": "Logs of moderation actions."
+    },
+    "/communities/{communityId}/security_events/{eventId}": {
+      "schema": { "$ref": "SecurityEvent" },
+      "description": "Security events and alerts."
+    },
+    "/communities/{communityId}/system_metrics/{metricId}": {
+      "schema": { "$ref": "SystemMetric" },
+      "description": "Aggregated system metrics."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": { "$ref": "Session" },
+      "description": "User active sessions."
+    },
+    "/communities/{communityId}/member_locations/{userId}": {
+      "schema": { "$ref": "MemberLocation" },
+      "description": "Live locations of community members."
+    },
+    "/communities/{communityId}/security_locations/{userId}": {
+      "schema": { "$ref": "MemberLocation" },
+      "description": "Live locations of security responders."
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "Conversation" },
+      "description": "Chat conversations."
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "Message" },
+      "description": "Messages within a conversation."
+    },
+    "/communities/{communityId}/charity_suggestions/{suggestionId}": {
+      "schema": { "$ref": "CharitySuggestion" },
+      "description": "Suggestions for charitable causes."
+    }
+  }
+}

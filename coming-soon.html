@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Lalela — a community platform for notices, local trade, chat, and emergency coordination. Coming soon." />
+  <meta name="theme-color" content="#0d3d47" />
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+  <link rel="apple-touch-icon" href="/images/Lalela Favicon - White on Green.png" />
+  <title>Lalela — Coming Soon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #0d3d47;
+      --primary-light: rgba(13,61,71,0.1);
+      --secondary: #9c4421;
+      --secondary-container: #fc7127;
+      --secondary-light: rgba(156,68,33,0.1);
+      --surface: #fff8f0;
+      --surface-container-low: #f4f3f1;
+      --surface-container-lowest: #ffffff;
+      --on-surface: #1a1c1a;
+      --on-surface-variant: #424842;
+      --outline: #737971;
+      --outline-variant: #c2c8bf;
+      --error: #ba1a1a;
+      --error-light: rgba(186,26,26,0.1);
+      --white: #ffffff;
+    }
+
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: var(--surface);
+      color: var(--on-surface);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+    }
+
+    .headline { font-family: 'Epilogue', sans-serif; }
+    .tracking-widest { letter-spacing: 0.1em; }
+    .tracking-tight { letter-spacing: -0.025em; }
+    .tracking-tighter { letter-spacing: -0.05em; }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: rgba(255,255,255,0.8); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(194,200,191,0.1);
+    }
+    .nav-inner {
+      max-width: 1280px; margin: 0 auto; padding: 0 1.5rem;
+      height: 80px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo-group { display: flex; align-items: center; gap: 0.5rem; }
+    .logo-icon {
+      width: 40px; height: 40px; background: var(--primary); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(13,61,71,0.2); overflow: hidden;
+    }
+    .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+    .logo-text {
+      font-family: 'Epilogue', sans-serif; font-size: 1.5rem;
+      font-weight: 900; color: var(--primary); letter-spacing: -0.025em;
+    }
+    .nav-links { display: none; align-items: center; gap: 2rem; font-size: 0.875rem; font-weight: 700; color: var(--outline); }
+    .nav-links a { text-decoration: none; color: inherit; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--primary); }
+    @media (min-width: 768px) { .nav-links { display: flex; } }
+
+    /* COMING SOON BADGE */
+    .coming-soon-badge {
+      display: inline-block; padding: 0.5rem 1.5rem;
+      background: var(--secondary-container); color: var(--white);
+      border-radius: 9999px; font-weight: 800; font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.15em;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.03); }
+    }
+
+    /* HERO */
+    .hero {
+      position: relative; padding: 10rem 0 5rem; overflow: hidden;
+      background: linear-gradient(180deg, var(--surface) 0%, rgba(255,248,240,0.8) 50%, var(--surface) 100%);
+    }
+    .hero-inner { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 1; }
+    .hero-content { max-width: 720px; }
+    .hero h1 {
+      font-family: 'Epilogue', sans-serif; font-weight: 900;
+      font-size: clamp(3rem, 8vw, 6rem); color: var(--primary);
+      line-height: 0.9; margin-bottom: 2rem;
+    }
+    .hero h1 span { color: var(--secondary); }
+    .hero p {
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem); color: var(--on-surface-variant);
+      font-weight: 500; line-height: 1.6; margin-bottom: 2rem; max-width: 540px;
+    }
+    .hero-buttons { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.75rem;
+      padding: 1.1rem 2.5rem; border-radius: 1rem; font-weight: 900;
+      font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em;
+      border: none; cursor: default; transition: transform 0.2s; text-decoration: none;
+    }
+    .btn-secondary { background: var(--secondary); color: var(--white); box-shadow: 0 8px 24px rgba(156,68,33,0.2); }
+    .btn-primary { background: var(--primary); color: var(--white); box-shadow: 0 8px 24px rgba(13,61,71,0.2); }
+    .btn-outline { background: var(--white); color: var(--primary); border: 1px solid rgba(194,200,191,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+    /* SECTIONS */
+    section { padding: 6rem 0; }
+    .section-inner { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
+    .section-title {
+      text-align: center; margin-bottom: 5rem;
+    }
+    .section-title h2 {
+      font-family: 'Epilogue', sans-serif; font-weight: 900;
+      font-size: clamp(2rem, 5vw, 3.5rem); color: var(--primary);
+      margin-bottom: 1rem; letter-spacing: -0.025em;
+    }
+    .section-title .divider {
+      width: 6rem; height: 6px; background: var(--secondary);
+      margin: 0 auto; border-radius: 9999px;
+    }
+
+    /* HOW IT WORKS CARDS */
+    .how-grid { display: grid; grid-template-columns: 1fr; gap: 3rem; }
+    @media (min-width: 768px) { .how-grid { grid-template-columns: repeat(3, 1fr); } }
+    .how-card {
+      background: var(--white); padding: 3rem; border-radius: 3rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid rgba(194,200,191,0.05);
+      text-align: center; transition: transform 0.3s;
+    }
+    .how-card:hover { transform: translateY(-8px); }
+    .how-icon {
+      width: 96px; height: 96px; border-radius: 2rem; margin: 0 auto 2rem;
+      display: flex; align-items: center; justify-content: center; font-size: 2.5rem;
+    }
+    .how-card h3 {
+      font-family: 'Epilogue', sans-serif; font-weight: 900;
+      font-size: 1.75rem; text-transform: uppercase; letter-spacing: -0.05em;
+      margin-bottom: 1rem;
+    }
+    .how-card p { color: var(--on-surface-variant); font-weight: 700; font-size: 1.1rem; line-height: 1.4; max-width: 200px; margin: 0 auto; }
+
+    /* ACTIVITY SECTION */
+    .activity-section { padding: 6rem 0; overflow: hidden; }
+    .activity-grid { display: flex; flex-direction: column; gap: 3rem; }
+    @media (min-width: 768px) { .activity-grid { flex-direction: row; align-items: center; } }
+    .activity-left { flex: 1; }
+    .activity-left h2 {
+      font-family: 'Epilogue', sans-serif; font-weight: 900;
+      font-size: clamp(2.5rem, 5vw, 4rem); color: var(--primary); line-height: 1; margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--white); padding: 2rem; border-radius: 3rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.06); border: 1px solid rgba(194,200,191,0.1); margin-bottom: 1.5rem;
+    }
+    .stat-headline { display: flex; align-items: center; gap: 1rem; color: var(--primary); font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; }
+    .stat-row { display: flex; justify-content: space-between; }
+    .stat-label { font-size: 0.625rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--outline); }
+    .stat-value { font-family: 'Epilogue', sans-serif; font-weight: 900; font-size: 2.5rem; color: var(--primary); }
+    .stat-value.secondary { color: var(--secondary); }
+    .cat-card {
+      background: rgba(156,68,33,0.05); padding: 2rem; border-radius: 3rem;
+      border: 1px solid rgba(156,68,33,0.1); display: flex; align-items: center; justify-content: space-between;
+    }
+    .cat-card h4 { font-family: 'Epilogue', sans-serif; font-weight: 900; font-size: 1.5rem; color: var(--secondary); }
+    .cat-card .cat-sub { font-size: 0.875rem; font-weight: 700; color: rgba(156,68,33,0.7); }
+    .cat-circle {
+      width: 80px; height: 80px; border-radius: 50%;
+      border: 8px solid var(--secondary); display: flex; align-items: center; justify-content: center;
+      font-weight: 900; color: var(--secondary); font-size: 0.9rem;
+    }
+    .activity-right { flex: 1; display: flex; align-items: center; justify-content: center; }
+    .map-placeholder {
+      width: 100%; aspect-ratio: 1; max-width: 480px; border-radius: 3rem;
+      background: linear-gradient(135deg, rgba(13,61,71,0.08) 0%, rgba(156,68,33,0.08) 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1rem; color: var(--outline); font-weight: 700;
+    }
+    .map-placeholder svg { width: 64px; height: 64px; opacity: 0.3; }
+
+    /* FEATURES - DARK SECTION */
+    .features-section { background: var(--primary); color: var(--white); padding: 6rem 0; }
+    .features-title { text-align: center; margin-bottom: 5rem; }
+    .features-title h2 { font-family: 'Epilogue', sans-serif; font-weight: 900; font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 0.5rem; }
+    .features-title p { font-size: 1.25rem; opacity: 0.7; font-weight: 500; }
+    .features-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+    @media (min-width: 768px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+    .feature-card {
+      padding: 3rem; border-radius: 3rem; border: 1px solid rgba(255,255,255,0.1);
+      display: flex; align-items: flex-start; gap: 2rem; transition: background 0.3s;
+    }
+    .feature-card:hover { background: rgba(255,255,255,0.1); }
+    .feature-card:nth-child(1) { background: rgba(255,255,255,0.1); }
+    .feature-card:nth-child(2) { background: rgba(156,68,33,0.2); }
+    .feature-card:nth-child(3) { background: rgba(255,255,255,0.05); }
+    .feature-card:nth-child(4) { background: rgba(186,26,26,0.2); }
+    .feature-icon {
+      width: 80px; height: 80px; min-width: 80px; background: rgba(255,255,255,0.1);
+      border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;
+    }
+    .feature-card h3 { font-family: 'Epilogue', sans-serif; font-weight: 900; font-size: 2rem; margin-bottom: 1rem; }
+    .feature-card p { font-size: 1.15rem; opacity: 0.8; font-weight: 500; line-height: 1.6; }
+
+    /* MEDIA HUB */
+    .media-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4rem; }
+    .media-header h2 {
+      font-family: 'Epilogue', sans-serif; font-weight: 900;
+      font-size: clamp(2.5rem, 5vw, 4rem); color: var(--primary);
+    }
+    .media-header p { font-size: 1.15rem; color: var(--on-surface-variant); font-weight: 500; margin-top: 0.5rem; }
+    .media-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+    @media (min-width: 768px) { .media-grid { grid-template-columns: repeat(3, 1fr); } }
+    .media-card {
+      background: var(--surface-container-lowest); border-radius: 3rem; overflow: hidden;
+      border: 1px solid rgba(194,200,191,0.1); box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .media-card-cover {
+      height: 192px; display: flex; align-items: center; justify-content: center;
+    }
+    .media-card-cover svg { width: 64px; height: 64px; color: rgba(255,255,255,0.4); }
+    .media-card-body { padding: 2.5rem; }
+    .media-tag { font-size: 0.625rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--outline); }
+    .media-card h4 {
+      font-family: 'Epilogue', sans-serif; font-weight: 900; font-size: 1.4rem;
+      color: var(--primary); line-height: 1.3; margin: 1rem 0;
+    }
+    .media-card p { color: var(--on-surface-variant); font-weight: 500; }
+
+    /* CTA / NOTIFY SECTION */
+    .cta-section {
+      padding: 6rem 0; background: var(--surface-container-low); position: relative; overflow: hidden;
+    }
+    .cta-section::before {
+      content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 1000px; height: 1000px; background: var(--primary); border-radius: 50%;
+      filter: blur(120px); opacity: 0.05; pointer-events: none;
+    }
+    .cta-grid { display: grid; grid-template-columns: 1fr; gap: 5rem; align-items: center; position: relative; z-index: 1; }
+    @media (min-width: 1024px) { .cta-grid { grid-template-columns: 1fr 1fr; } }
+    .cta-left h2 {
+      font-family: 'Epilogue', sans-serif; font-weight: 900;
+      font-size: clamp(3rem, 6vw, 5rem); color: var(--primary); line-height: 0.9; margin-bottom: 2rem;
+    }
+    .cta-left > p { font-size: 1.3rem; color: var(--on-surface-variant); font-weight: 500; line-height: 1.6; margin-bottom: 2.5rem; }
+    .check-item { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+    .check-icon {
+      width: 48px; height: 48px; min-width: 48px; border-radius: 1rem;
+      display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+    }
+    .check-item p { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+    .notify-card {
+      background: var(--white); padding: 3rem; border-radius: 4rem;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.08); border: 1px solid rgba(194,200,191,0.1);
+      text-align: center;
+    }
+    .notify-card h3 {
+      font-family: 'Epilogue', sans-serif; font-weight: 900;
+      font-size: 1.75rem; color: var(--primary); margin-bottom: 0.5rem;
+    }
+    .notify-card > p { color: var(--on-surface-variant); font-weight: 500; margin-bottom: 2rem; }
+    .notify-card .email-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+    .notify-card input {
+      flex: 1; padding: 1rem 1.5rem; background: var(--surface-container-low);
+      border: none; border-radius: 1rem; font-family: 'Manrope', sans-serif;
+      font-weight: 700; font-size: 1rem; outline: none;
+    }
+    .notify-card input::placeholder { color: var(--outline); }
+    .notify-card .notify-btn {
+      padding: 1rem 2rem; background: var(--secondary); color: var(--white);
+      border: none; border-radius: 1rem; font-family: 'Manrope', sans-serif;
+      font-weight: 900; font-size: 0.875rem; text-transform: uppercase;
+      letter-spacing: 0.1em; cursor: default; white-space: nowrap;
+    }
+    .notify-card .note { font-size: 0.75rem; color: var(--outline); font-weight: 500; }
+
+    /* FOOTER */
+    footer { background: var(--primary); color: var(--white); padding: 5rem 0; }
+    .footer-inner { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
+    .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 5rem; }
+    @media (min-width: 768px) { .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; } }
+    .footer-brand p { font-size: 0.875rem; opacity: 0.6; font-weight: 500; line-height: 1.7; margin-top: 1rem; }
+    .footer-col h5 { font-size: 0.625rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.4; margin-bottom: 1.5rem; }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 1rem; }
+    .footer-col a { color: var(--white); text-decoration: none; font-weight: 700; font-size: 0.875rem; opacity: 0.85; transition: opacity 0.2s; }
+    .footer-col a:hover { opacity: 1; color: var(--secondary-container); }
+    .footer-bottom {
+      padding-top: 3rem; border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex; flex-direction: column; align-items: center; gap: 1.5rem;
+    }
+    @media (min-width: 768px) { .footer-bottom { flex-direction: row; justify-content: space-between; } }
+    .footer-bottom p { font-size: 0.75rem; opacity: 0.4; font-weight: 700; }
+    .footer-bottom-links { display: flex; gap: 2rem; font-size: 0.75rem; font-weight: 700; opacity: 0.4; }
+    .footer-bottom-links a { color: var(--white); text-decoration: none; }
+
+    /* SVG icon helper */
+    .icon-svg { display: inline-block; vertical-align: middle; }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="nav-inner">
+      <div class="logo-group">
+        <div class="logo-icon">
+          <img src="/images/Lalela Favicon - White on Green.png" alt="Lalela Logo" />
+        </div>
+        <span class="logo-text">lalela</span>
+      </div>
+      <div class="nav-links">
+        <a href="#">About</a>
+        <a href="#">Benefits &amp; Pricing</a>
+        <a href="#">Communities</a>
+        <a href="#">Blog</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-content">
+        <div class="coming-soon-badge" style="margin-bottom: 2rem;">🚀 Coming Soon</div>
+        <h1 class="headline">
+          no more talk talk —<br />
+          <span>it's listen, listen, do.</span>
+        </h1>
+        <p>
+          Join your community. Trade safely.<br />
+          Give back with every deal.
+        </p>
+        <p style="font-size: 1rem; color: var(--secondary); font-weight: 800; margin-bottom: 1.5rem;">
+          We're putting the finishing touches on something special. Lalela is launching soon — stay tuned.
+        </p>
+        <div class="hero-buttons">
+          <a href="#notify" class="btn btn-secondary">Get Notified</a>
+          <a href="#features" class="btn btn-outline">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3" fill="var(--primary)"></polygon></svg>
+            Learn More
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How Lalela Works -->
+  <section style="background: var(--surface-container-lowest);">
+    <div class="section-inner">
+      <div class="section-title">
+        <h2 class="headline">how lalela works</h2>
+        <div class="divider"></div>
+      </div>
+      <div class="how-grid">
+        <div class="how-card">
+          <div class="how-icon" style="background: var(--secondary-light);">👂</div>
+          <h3 class="headline" style="color: var(--secondary);">listen</h3>
+          <p>join or build a local group &amp; share needs</p>
+        </div>
+        <div class="how-card">
+          <div class="how-icon" style="background: var(--primary-light);">💬</div>
+          <h3 class="headline" style="color: var(--primary);">connect</h3>
+          <p>chat, list items &amp; post notices</p>
+        </div>
+        <div class="how-card">
+          <div class="how-icon" style="background: var(--error-light);">🤲</div>
+          <h3 class="headline" style="color: var(--error);">do</h3>
+          <p>trade, support charity &amp; stay safe</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Community Activity -->
+  <section class="activity-section">
+    <div class="section-inner">
+      <div class="activity-grid">
+        <div class="activity-left">
+          <h2 class="headline">live community activity</h2>
+          <div class="stat-card">
+            <div class="stat-headline">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              R15,240 raised for local causes
+            </div>
+            <div style="height:1px; background: rgba(194,200,191,0.2); margin-bottom: 1.5rem;"></div>
+            <div class="stat-row">
+              <div>
+                <p class="stat-label">Listings this week</p>
+                <p class="stat-value headline">312</p>
+              </div>
+              <div style="text-align: right;">
+                <p class="stat-label">New Communities</p>
+                <p class="stat-value secondary headline">8</p>
+              </div>
+            </div>
+          </div>
+          <div class="cat-card">
+            <div>
+              <h4 class="headline">CAT tracker</h4>
+              <p class="cat-sub">community added tax</p>
+            </div>
+            <div class="cat-circle">R10.7k</div>
+          </div>
+        </div>
+        <div class="activity-right">
+          <div class="map-placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            <span>Interactive map coming soon</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="features-section">
+    <div class="section-inner">
+      <div class="features-title">
+        <h2 class="headline">What You Can Do on Lalela</h2>
+        <p>Feature highlights</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <div>
+            <h3 class="headline">Listings</h3>
+            <p>Trade items, services, and help — with built-in charity support on every transaction.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📢</div>
+          <div>
+            <h3 class="headline">Notices</h3>
+            <p>Urgent, general, and community-wide notices to keep everyone informed and safe.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">👥</div>
+          <div>
+            <h3 class="headline">Chat</h3>
+            <p>Talk like WhatsApp — but built for community change and real connections.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">❤️</div>
+          <div>
+            <h3 class="headline">CAT</h3>
+            <p>Community Added Tax makes every sale do good — a small percentage goes to local causes.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Media Hub -->
+  <section>
+    <div class="section-inner">
+      <div class="media-header">
+        <div>
+          <h2 class="headline">media hub</h2>
+          <p>Share updates, promote your business, and highlight what matters.</p>
+        </div>
+      </div>
+      <div class="media-grid">
+        <div class="media-card">
+          <div class="media-card-cover" style="background: var(--primary);">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </div>
+          <div class="media-card-body">
+            <span class="media-tag">Broadcast</span>
+            <h4 class="headline">Radio Show Replay</h4>
+            <p>Listen to our latest community broadcast.</p>
+          </div>
+        </div>
+        <div class="media-card">
+          <div class="media-card-cover" style="background: var(--secondary);">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </div>
+          <div class="media-card-body">
+            <span class="media-tag">Education</span>
+            <h4 class="headline">How CAT Works</h4>
+            <p>Learn how your trades impact local causes.</p>
+          </div>
+        </div>
+        <div class="media-card">
+          <div class="media-card-cover" style="background: var(--error);">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </div>
+          <div class="media-card-body">
+            <span class="media-tag">Vision</span>
+            <h4 class="headline">What is Lalela Really About?</h4>
+            <p>The vision behind the platform.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA / Get Notified -->
+  <section id="notify" class="cta-section">
+    <div class="section-inner">
+      <div class="cta-grid">
+        <div class="cta-left">
+          <h2 class="headline">Be the first to know when we launch</h2>
+          <p>Join Lalela and take control of how your community connects, trades, and grows.</p>
+          <div class="check-item">
+            <div class="check-icon" style="background: var(--primary-light); color: var(--primary);">✓</div>
+            <p>30 days free for admins</p>
+          </div>
+          <div class="check-item">
+            <div class="check-icon" style="background: var(--secondary-light); color: var(--secondary);">✓</div>
+            <p>Unlimited member invites</p>
+          </div>
+          <div class="check-item">
+            <div class="check-icon" style="background: var(--error-light); color: var(--error);">✓</div>
+            <p>Built-in charity with every trade</p>
+          </div>
+        </div>
+        <div class="notify-card">
+          <div class="coming-soon-badge" style="margin-bottom: 1.5rem;">Launching Soon</div>
+          <h3 class="headline">Get Notified</h3>
+          <p>Drop your email and we'll let you know the moment Lalela goes live.</p>
+          <div class="email-row">
+            <input type="email" placeholder="your@email.com" disabled />
+            <button class="notify-btn" disabled>Notify Me</button>
+          </div>
+          <p class="note">Sign-ups will open soon. No spam, ever.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="logo-group">
+            <div style="width:40px; height:40px; border-radius:12px; overflow:hidden;">
+              <img src="/images/Lalela Favicon - White on Green.png" alt="Lalela Logo" style="width:100%; height:100%; object-fit:cover;" />
+            </div>
+            <span style="font-family:'Epilogue',sans-serif; font-size:1.75rem; font-weight:900;">lalela</span>
+          </div>
+          <p>Build your own community — launching soon.</p>
+        </div>
+        <div class="footer-col">
+          <h5>Company</h5>
+          <ul>
+            <li><a href="#">About</a></li>
+            <li><a href="#">Benefits &amp; Pricing</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Media</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h5>Social</h5>
+          <ul>
+            <li><a href="#">Instagram</a></li>
+            <li><a href="#">TikTok</a></li>
+            <li><a href="#">Twitter</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h5>Legal</h5>
+          <ul>
+            <li><a href="#">Privacy</a></li>
+            <li><a href="#">Terms</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Lalela. All rights reserved.</p>
+        <div class="footer-bottom-links">
+          <a href="#">Support</a>
+          <a href="#">Contact</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
