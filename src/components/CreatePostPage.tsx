@@ -23,6 +23,7 @@ import { useCommunity } from '../context/CommunityContext';
 import { useFirebase } from '../context/FirebaseContext';
 import { PostConfirmationModal } from './PostConfirmationModal';
 import { BUSINESS_CATEGORIES } from '../constants';
+import { uploadImage } from '../lib/uploadImage';
 
 const getCtaConfig = (postType: PostType, urgency: Urgency, isEditing: boolean) => {
   if (isEditing) return { ctaLabel: 'Update Post', themeColor: 'bg-primary' };
@@ -140,18 +141,20 @@ export const CreatePostPage = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 200 * 1024) {
-      alert('Image must be smaller than 200KB');
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be smaller than 2MB');
       return;
     }
 
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPostsImage(reader.result as string);
+    try {
+      const url = await uploadImage(file, 'posts', user?.uid ?? 'anon', postsImage);
+      setPostsImage(url);
+    } catch {
+      alert('Image upload failed. Please try again.');
+    } finally {
       setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleUseCurrentLocation = () => {

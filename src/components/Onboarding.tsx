@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { User } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, Timestamp, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { uploadImage } from '../lib/uploadImage';
 import { useFirebase } from '../context/FirebaseContext';
 import { useGoogleMaps } from '../context/GoogleMapsContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -163,20 +164,22 @@ export const Onboarding: React.FC = () => {
     }
   }, [user, userProfile]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 200 * 1024) {
-      setError('Image must be smaller than 200KB');
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Image must be smaller than 2MB');
       return;
     }
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setProfileImage(reader.result as string);
+    try {
+      const url = await uploadImage(file, 'profiles', user?.uid ?? 'anon');
+      setProfileImage(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
       setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleLocationSelect = (address: string, lat: number, lng: number) => {

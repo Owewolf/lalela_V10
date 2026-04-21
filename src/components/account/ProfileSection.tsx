@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils';
 import { useFirebase } from '../../context/FirebaseContext';
 import { useCommunity } from '../../context/CommunityContext';
 import { auth } from '../../firebase';
+import { uploadImage } from '../../lib/uploadImage';
 import { LocationSettings } from './LocationSettings';
 
 interface ProfileSectionProps {
@@ -33,24 +34,20 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ initialEdit = fa
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (limit to 200KB for Firestore document safety)
-    if (file.size > 200 * 1024) {
-      setStatus({ type: 'error', message: 'Image must be smaller than 200KB' });
+    if (file.size > 2 * 1024 * 1024) {
+      setStatus({ type: 'error', message: 'Image must be smaller than 2MB' });
       return;
     }
 
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setFormData(prev => ({ ...prev, profile_image: base64String }));
+    try {
+      const url = await uploadImage(file, 'profiles', userProfile?.id ?? 'anon', formData.profile_image);
+      setFormData(prev => ({ ...prev, profile_image: url }));
+    } catch (err) {
+      setStatus({ type: 'error', message: err instanceof Error ? err.message : 'Upload failed' });
+    } finally {
       setIsUploading(false);
-    };
-    reader.onerror = () => {
-      setStatus({ type: 'error', message: 'Failed to read file' });
-      setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
   
   // Sync formData with userProfile when not editing

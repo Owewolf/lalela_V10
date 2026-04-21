@@ -20,6 +20,7 @@ import { useCommunity } from '../../context/CommunityContext';
 import { useFirebase } from '../../context/FirebaseContext';
 import { POST_SUBTYPE_CONFIG } from '../../constants';
 import { PostConfirmationModal } from '../PostConfirmationModal';
+import { uploadImage } from '../../lib/uploadImage';
 
 const NOTICE_CTA: Record<NoticeSubtype, { ctaLabel: string; themeColor: string; buttonBg: string }> = {
   warning: { ctaLabel: 'Send Warning', themeColor: 'bg-amber-600', buttonBg: 'bg-amber-600 text-white hover:bg-amber-700' },
@@ -197,17 +198,19 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 200 * 1024) {
-      alert('Image must be smaller than 200KB');
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be smaller than 2MB');
       return;
     }
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPostsImage(reader.result as string);
+    try {
+      const url = await uploadImage(file, 'posts', user?.uid ?? 'anon', postsImage);
+      setPostsImage(url);
+    } catch {
+      alert('Image upload failed. Please try again.');
+    } finally {
       setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handlePost = async () => {
