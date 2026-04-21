@@ -46,7 +46,6 @@ export interface CommunityNotice {
     timestamp: string;
   };
   posts_image?: string;
-  posts_image_2?: string;
 }
 
 export interface EmergencyAlert {

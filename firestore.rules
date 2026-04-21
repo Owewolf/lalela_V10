@@ -330,7 +330,6 @@ service cloud.firestore {
              (!('latitude' in data) || data.latitude is number) &&
              (!('longitude' in data) || data.longitude is number) &&
              (!('posts_image' in data) || data.posts_image is string) &&
-             (!('posts_image_2' in data) || data.posts_image_2 is string) &&
              (!('urgency_level' in data) || data.urgency_level is string) &&
              (!('postSubtype' in data) || data.postSubtype in ['emergency', 'warning', 'normal', 'information', 'listing']) &&
              (!('source' in data) || data.source is string) &&

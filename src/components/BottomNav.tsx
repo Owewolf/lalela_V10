@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Home, FileText, MessageSquare, Store, Settings } from 'lucide-react';
+import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 
 interface BottomNavProps {
@@ -9,6 +10,23 @@ interface BottomNavProps {
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange, hasUnread }) => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY) {
+        setIsVisible(false); // scrolling DOWN → hide
+      } else if (currentScrollY < lastScrollY) {
+        setIsVisible(true);  // scrolling UP → show
+      }
+      lastScrollY = currentScrollY;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const navItems = [
     { id: 'home', icon: <Home className="w-6 h-6" />, label: 'Home' },
     { id: 'posts', icon: <FileText className="w-6 h-6" />, label: 'Posts' },
@@ -18,7 +36,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange, ha
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-4 pb-8 pt-2 bg-surface/80 backdrop-blur-xl border-t border-surface-container shadow-ambient rounded-t-[2.5rem]">
+    <motion.nav
+      animate={{ y: isVisible ? 0 : '100%' }}
+      transition={{ duration: 0.25, ease: 'easeInOut' }}
+      className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-4 pb-8 pt-2 bg-surface/80 backdrop-blur-xl border-t border-surface-container shadow-ambient rounded-t-[2.5rem]"
+    >
       {navItems.map((item) => {
         const isActive = activeTab === item.id;
         const isChat = item.id === 'chat';
@@ -62,6 +84,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange, ha
           </button>
         );
       })}
-    </nav>
+    </motion.nav>
   );
 };

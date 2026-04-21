@@ -232,7 +232,7 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
       latitude,
       longitude,
       source: locationSource,
-      posts_image: postsImage,
+      posts_image: postSubtype !== 'warning' ? postsImage : undefined,
       expires_at: postSubtype === 'warning' ? undefined : expiresAt,
     };
 
@@ -364,8 +364,8 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
             </div>
           )}
 
-          {/* Image Upload */}
-          <div className="group">
+          {/* Image Upload — not shown for warning notices */}
+          {postSubtype !== 'warning' && <div className="group">
             <label className="block text-sm font-semibold mb-3 ml-1 text-on-surface-variant">Add Photo (up to 4MB)</label>
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -394,7 +394,7 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
                 </>
               )}
             </div>
-          </div>
+          </div>}
 
           {/* Title */}
           <div className="space-y-2">

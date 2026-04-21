@@ -81,28 +81,6 @@ const RecenterMap = ({ center, trigger, zoom }: { center: [number, number], trig
   return null;
 };
 
-const MapInteractionController = ({ isLocked }: { isLocked: boolean }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (isLocked) {
-      map.dragging.disable();
-      map.scrollWheelZoom.disable();
-      map.touchZoom.disable();
-      map.doubleClickZoom.disable();
-      map.boxZoom.disable();
-      map.keyboard.disable();
-    } else {
-      map.dragging.enable();
-      map.scrollWheelZoom.enable();
-      map.touchZoom.enable();
-      map.doubleClickZoom.enable();
-      map.boxZoom.enable();
-      map.keyboard.enable();
-    }
-  }, [isLocked, map]);
-  return null;
-};
-
 interface InteractiveCoverageMapProps {
   center: [number, number];
   zoom?: number;
@@ -123,8 +101,6 @@ interface InteractiveCoverageMapProps {
     icon?: L.DivIcon;
     popupContent?: React.ReactNode;
   }>;
-  isLocked?: boolean;
-  onUnlock?: () => void;
 }
 
 export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
@@ -141,9 +117,7 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
   onOpenEmergencyHub,
   resetTrigger,
   initialFilter,
-  additionalMarkers = [],
-  isLocked = false,
-  onUnlock,
+  additionalMarkers = []
 }) => {
   const { currentCommunity, posts, members, securityResponders, communityBusinesses } = useCommunity();
   const [mapFilter, setMapFilter] = useState<'members' | 'listings' | 'notices' | 'businesses'>(initialFilter || 'members');
@@ -202,16 +176,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
   };
 
   return (
-    <>
-    <style>{`
-      @keyframes emergency-ripple {
-        0%   { opacity: 0.75; }
-        100% { opacity: 0; }
-      }
-      .emergency-ripple-1 { animation: emergency-ripple 2.4s ease-out infinite; }
-      .emergency-ripple-2 { animation: emergency-ripple 2.4s ease-out infinite 0.8s; }
-      .emergency-ripple-3 { animation: emergency-ripple 2.4s ease-out infinite 1.6s; }
-    `}</style>
     <div className={cn("space-y-6", className)}>
       <div className="relative w-full rounded-2xl overflow-hidden bg-surface-container-high border border-outline-variant/10" style={{ height }}>
         <MapContainer 
@@ -225,7 +189,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <RecenterMap center={mapCenter} trigger={resetTrigger} zoom={zoom} />
-          <MapInteractionController isLocked={isLocked} />
 
           {/* Coverage Area / Emergency Impact Zone */}
           {currentCommunity?.coverageArea && (
@@ -249,35 +212,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
             />
           )}
 
-          {/* Emergency Ripple Rings */}
-          {isEmergencyActive && (() => {
-            const emergencyPost = posts.find(p => p.urgency === 'emergency' || p.urgency_level === 'emergency');
-            const ripplePos: [number, number] | null = emergencyPost?.latitude && emergencyPost?.longitude
-              ? [emergencyPost.latitude, emergencyPost.longitude]
-              : currentCommunity?.coverageArea
-                ? [currentCommunity.coverageArea.latitude, currentCommunity.coverageArea.longitude]
-                : null;
-            if (!ripplePos) return null;
-            return (
-              <React.Fragment key="emergency-ripples">
-                {[120, 280, 500].map((radius, i) => (
-                  <Circle
-                    key={`ripple-${i}`}
-                    center={ripplePos}
-                    radius={radius}
-                    pathOptions={{
-                      color: '#B3261E',
-                      fillColor: '#B3261E',
-                      fillOpacity: 0.06,
-                      weight: 2,
-                      className: `emergency-ripple-${i + 1}`,
-                    }}
-                  />
-                ))}
-              </React.Fragment>
-            );
-          })()}
-
           {/* Emergency Marker */}
           {isEmergencyActive && (
             <React.Fragment key="emergency-marker-wrapper">
@@ -296,7 +230,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
                     position={pos} 
                     icon={emergencyIcon}
                     zIndexOffset={1000}
-                    eventHandlers={{ click: () => onUnlock?.() }}
                   >
                     <Popup className="custom-popup">
                       <div className="p-3 space-y-2 min-w-[200px]">
@@ -332,7 +265,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
                   key={member.user_id} 
                   position={[member.latitude!, member.longitude!]}
                   icon={showSecurityIcon ? securityIcon : memberIcon}
-                  eventHandlers={{ click: () => onUnlock?.() }}
                 >
                   <Popup className="custom-popup">
                     <div className="p-3 flex items-center gap-4 min-w-[220px]">
@@ -357,7 +289,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
               key={listing.id} 
               position={[listing.latitude!, listing.longitude!]}
               icon={listingIcon}
-              eventHandlers={{ click: () => onUnlock?.() }}
             >
               <Popup className="custom-popup">
                 <div className="p-0 overflow-hidden min-w-[240px] rounded-xl">
@@ -383,7 +314,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
               position={[notice.latitude!, notice.longitude!]}
               icon={notice.priority === 'emergency' || notice.urgency === 'emergency' ? emergencyIcon : noticeIcon}
               zIndexOffset={notice.priority === 'emergency' || notice.urgency === 'emergency' ? 500 : 0}
-              eventHandlers={{ click: () => onUnlock?.() }}
             >
               <Popup className="custom-popup">
                 <div className="p-3 space-y-3 min-w-[220px]">
@@ -409,7 +339,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
               key={business.id} 
               position={[business.latitude, business.longitude]} 
               icon={businessIcon}
-              eventHandlers={{ click: () => onUnlock?.() }}
             >
               <Popup className="custom-popup">
                 <div className="p-0 overflow-hidden min-w-[240px] rounded-xl">
@@ -437,7 +366,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
               position={[responder.latitude, responder.longitude]} 
               icon={securityIcon}
               zIndexOffset={800}
-              eventHandlers={{ click: () => onUnlock?.() }}
             >
               <Popup>
                 <div className="flex items-center gap-2 p-1">
@@ -458,7 +386,6 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
               position={marker.position} 
               icon={marker.icon}
               zIndexOffset={900}
-              eventHandlers={{ click: () => onUnlock?.() }}
             >
               {marker.popupContent && (
                 <Popup>{marker.popupContent}</Popup>
@@ -549,6 +476,5 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
         </div>
       )}
     </div>
-    </>
   );
 };

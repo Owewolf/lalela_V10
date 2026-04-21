@@ -55,6 +55,7 @@ export const HomePage = ({
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [mapFilterOverride, setMapFilterOverride] = useState<'members' | 'listings' | 'notices' | 'businesses' | undefined>(undefined);
+  const [mapUnlocked, setMapUnlocked] = useState(false);
 
   useEffect(() => {
     if (initialCenter) {
@@ -103,6 +104,18 @@ export const HomePage = ({
     return () => navigator.geolocation.clearWatch(watchId);
   }, [userProfile?.isSecurityMember, userProfile?.locationSharingEnabled, currentCommunity?.id]);
 
+  // Re-lock map when it scrolls out of view
+  useEffect(() => {
+    const ref = mapSectionRef.current;
+    if (!ref) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (!entry.isIntersecting) setMapUnlocked(false); },
+      { threshold: 0.1 }
+    );
+    observer.observe(ref);
+    return () => observer.disconnect();
+  }, []);
+
   const userRole = currentCommunity?.userRole || 'Member';
 
   const calculateDistance = (lat?: number, lng?: number) => {
@@ -134,7 +147,7 @@ export const HomePage = ({
 
   const alert = currentCommunity?.alerts?.[0];
   const notices = [...posts]
-    .filter(p => p.type === 'notice')
+    .filter(p => p.type === 'notice' && p.urgency !== 'emergency' && p.urgency_level !== 'emergency')
     .sort((a, b) => {
       const priorityA = getUrgencyPriority(a.urgency_level, a.urgency);
       const priorityB = getUrgencyPriority(b.urgency_level, b.urgency);
@@ -208,12 +221,12 @@ export const HomePage = ({
           }}
           disabled={currentCommunity?.status === 'READ-ONLY'}
           className={cn(
-            "clay-gradient flex flex-col items-center justify-center py-6 px-4 rounded-2xl text-white gap-2 transition-transform active:scale-95 shadow-lg relative overflow-hidden",
+            "clay-gradient flex flex-col items-center justify-center py-4 px-4 rounded-2xl text-white gap-2 transition-transform active:scale-95 shadow-lg relative overflow-hidden",
             currentCommunity?.status === 'READ-ONLY' && "opacity-50 grayscale cursor-not-allowed",
             isEmergencyActive && "ring-4 ring-error animate-pulse"
           )}
         >
-          <Siren className="w-8 h-8 fill-current" />
+          <Siren className="w-6 h-6 fill-current" />
           <span className="font-semibold text-sm">{isEmergencyActive ? 'ACTIVE EMERGENCY' : 'Emergency Help'}</span>
           {isEmergencyActive && (
             <div className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full animate-ping" />
@@ -224,11 +237,11 @@ export const HomePage = ({
             onClick={() => setShowIncidentMenu(!showIncidentMenu)}
             disabled={currentCommunity?.status === 'READ-ONLY'}
             className={cn(
-              "w-full bg-primary-container text-white flex flex-col items-center justify-center py-6 px-4 rounded-2xl gap-2 transition-transform active:scale-95 shadow-lg",
+              "w-full bg-primary-container text-white flex flex-col items-center justify-center py-4 px-4 rounded-2xl gap-2 transition-transform active:scale-95 shadow-lg",
               currentCommunity?.status === 'READ-ONLY' && "opacity-50 grayscale cursor-not-allowed"
             )}
           >
-            <Plus className="w-8 h-8" />
+            <Plus className="w-6 h-6" />
             <span className="font-semibold text-sm">Create Notice</span>
           </button>
 
@@ -348,6 +361,67 @@ export const HomePage = ({
         </section>
       )}
 
+      {/* Community Pulse Map Section */}
+      <section ref={mapSectionRef} className={cn(
+        "bg-surface-container-low rounded-3xl p-6 shadow-sm transition-all duration-500 space-y-6",
+        isEmergencyActive && "ring-4 ring-error/30 bg-error/5"
+      )}>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
+          <div className="space-y-1">
+            <h3 className="text-xl font-bold font-headline">Interactive Coverage Map</h3>
+            <p className="text-xs text-outline font-medium">Live discovery layer for your community radius</p>
+          </div>
+        </div>
+
+        <div className="relative">
+          <InteractiveCoverageMap 
+            center={mapCenter}
+            zoom={mapZoom}
+            resetTrigger={resetTrigger}
+            isEmergencyActive={isEmergencyActive}
+            showFilters={true}
+            showLegend={true}
+            showPulseOverlay={true}
+            showEmergencyOverlay={true}
+            height={notices.length > 0 ? "300px" : "420px"}
+            initialFilter={mapFilterOverride}
+            isLocked={!mapUnlocked}
+            onUnlock={() => setMapUnlocked(true)}
+            onOpenEmergencyHub={() => {
+              const latestEmergency = posts.find(p => p.urgency === 'emergency' || p.urgency_level === 'emergency');
+              if (latestEmergency) {
+                onOpenEmergencyHub?.(latestEmergency);
+              }
+            }}
+          />
+        </div>
+
+        {!isEmergencyActive && (
+          <div className="flex justify-end px-2">
+            <button 
+              onClick={() => {
+                if (currentCommunity?.coverageArea) {
+                  const { latitude, longitude, radius } = currentCommunity.coverageArea;
+                  setMapCenter([latitude, longitude]);
+                  // Calculate zoom so the coverage circle fits vertically
+                  // At zoom z, the vertical span ≈ 40075 * cos(lat) / 2^z (but for latitude: 40075 / 2^z in km for the full 256px tile)
+                  // We want 2 * radius (diameter) to fit the map height. Map height is ~500px ≈ 256 * 2 tiles.
+                  // Formula: zoom = log2(20037.5 / radius) — adjusted for half-tile display
+                  const radiusKm = radius || 2;
+                  const zoomLevel = Math.round(Math.log2(20037.5 / radiusKm) - 1);
+                  setMapZoom(Math.max(10, Math.min(18, zoomLevel)));
+                  setResetTrigger(t => t + 1);
+                }
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-surface-container-high text-primary rounded-xl text-xs font-bold hover:bg-surface-container-highest transition-all active:scale-95"
+            >
+              <Navigation className="w-4 h-4" />
+              Reset Map View
+            </button>
+          </div>
+        )}
+      </section>
+
       {/* Recent Notices: Bento Grid */}
       <section className="space-y-6">
         <div className="flex items-end justify-between px-2">
@@ -358,7 +432,26 @@ export const HomePage = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {notices.map((notice) => (
+          {notices.length === 0 ? (
+            <div className="md:col-span-3 flex flex-col items-center justify-center gap-3 py-10 px-6 bg-surface-container-lowest rounded-3xl border border-surface-container shadow-sm text-center">
+              <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center">
+                <Shield className="w-7 h-7 text-emerald-500" />
+              </div>
+              <div>
+                <p className="font-bold text-primary text-lg">All Secure</p>
+                <p className="text-sm text-on-surface-variant mt-1">No active notices right now. Your community is all clear.</p>
+              </div>
+              {currentCommunity?.status !== 'READ-ONLY' && (
+                <button
+                  onClick={() => onStartIncidentReport?.('general')}
+                  className="mt-2 px-5 py-2 bg-surface-container-high text-primary rounded-full text-xs font-bold hover:bg-surface-container-highest transition-all active:scale-95"
+                >
+                  Post a Notice
+                </button>
+              )}
+            </div>
+          ) : (
+            notices.map((notice) => (
             <div 
               key={notice.id}
               className={cn(
@@ -538,66 +631,11 @@ export const HomePage = ({
               </div>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 
-      {/* Community Pulse Map Section */}
-      <section ref={mapSectionRef} className={cn(
-        "bg-surface-container-low rounded-3xl p-6 shadow-sm transition-all duration-500 space-y-6",
-        isEmergencyActive && "ring-4 ring-error/30 bg-error/5"
-      )}>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
-          <div className="space-y-1">
-            <h3 className="text-xl font-bold font-headline">Interactive Coverage Map</h3>
-            <p className="text-xs text-outline font-medium">Live discovery layer for your community radius</p>
-          </div>
-        </div>
-
-        <InteractiveCoverageMap 
-          center={mapCenter}
-          zoom={mapZoom}
-          resetTrigger={resetTrigger}
-          isEmergencyActive={isEmergencyActive}
-          showFilters={true}
-          showLegend={true}
-          showPulseOverlay={true}
-          showEmergencyOverlay={true}
-          height="500px"
-          initialFilter={mapFilterOverride}
-          onOpenEmergencyHub={() => {
-            const latestEmergency = posts.find(p => p.urgency === 'emergency' || p.urgency_level === 'emergency');
-            if (latestEmergency) {
-              onOpenEmergencyHub?.(latestEmergency);
-            }
-          }}
-        />
-
-        {!isEmergencyActive && (
-          <div className="flex justify-end px-2">
-            <button 
-              onClick={() => {
-                if (currentCommunity?.coverageArea) {
-                  const { latitude, longitude, radius } = currentCommunity.coverageArea;
-                  setMapCenter([latitude, longitude]);
-                  // Calculate zoom so the coverage circle fits vertically
-                  // At zoom z, the vertical span ≈ 40075 * cos(lat) / 2^z (but for latitude: 40075 / 2^z in km for the full 256px tile)
-                  // We want 2 * radius (diameter) to fit the map height. Map height is ~500px ≈ 256 * 2 tiles.
-                  // Formula: zoom = log2(20037.5 / radius) — adjusted for half-tile display
-                  const radiusKm = radius || 2;
-                  const zoomLevel = Math.round(Math.log2(20037.5 / radiusKm) - 1);
-                  setMapZoom(Math.max(10, Math.min(18, zoomLevel)));
-                  setResetTrigger(t => t + 1);
-                }
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-surface-container-high text-primary rounded-xl text-xs font-bold hover:bg-surface-container-highest transition-all active:scale-95"
-            >
-              <Navigation className="w-4 h-4" />
-              Reset Map View
-            </button>
-          </div>
-        )}
-      </section>
 
       {/* Recent Listings Section */}
       {listings.length > 0 && (
