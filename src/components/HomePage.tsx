@@ -16,9 +16,6 @@ const emergencyIcon = new L.DivIcon({
   iconAnchor: [20, 20],
 });
 
-const getNoticeImages = (notice: CommunityNotice) =>
-  [notice.posts_image, notice.posts_image_2].filter((image): image is string => Boolean(image));
-
 export const HomePage = ({ 
   initialCenter, 
   onCenterReset,
@@ -482,18 +479,14 @@ export const HomePage = ({
                 )}>
                   {notice.title}
                 </h4>
-                {getNoticeImages(notice).length > 0 && !(notice.latitude && notice.longitude && (notice.urgency === 'emergency' || notice.urgency_level === 'emergency' || notice.urgency_level === 'warning' || notice.urgency === 'high')) && (
-                  <div className={cn('grid gap-3', getNoticeImages(notice).length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
-                    {getNoticeImages(notice).map((image, index) => (
-                      <div key={`${notice.id}-image-${index}`} className="w-full aspect-video rounded-2xl overflow-hidden border border-outline-variant/10">
-                        <img 
-                          src={image} 
-                          alt={`${notice.title} ${index + 1}`}
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      </div>
-                    ))}
+                {notice.posts_image && !(notice.latitude && notice.longitude && (notice.urgency === 'emergency' || notice.urgency_level === 'emergency' || notice.urgency_level === 'warning' || notice.urgency === 'high')) && (
+                  <div className="w-full aspect-video rounded-2xl overflow-hidden border border-outline-variant/10">
+                    <img 
+                      src={notice.posts_image} 
+                      alt={notice.title}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
                   </div>
                 )}
                 {(notice.locationName || notice.latitude) && (
