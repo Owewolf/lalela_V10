@@ -110,7 +110,7 @@ const AddressAutocomplete = ({
 };
 
 const NotificationToggleRow: React.FC<{ onNavigate: () => void }> = ({ onNavigate }) => {
-  const { user } = useFirebase();
+  const { user, updateUserProfile } = useFirebase();
   const { updateNotificationPreferences } = useCommunity();
   const [globalEnabled, setGlobalEnabled] = useState(true);
 
@@ -300,6 +300,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const isAdminOrModerator = currentCommunity?.userRole === 'Admin' || currentCommunity?.userRole === 'Moderator';
   const hasTrialCommunity = communities.some(c => c.owner_id === userProfile?.id && c.type === 'TRIAL');
   const canCreateNewCommunity = !hasTrialCommunity;
+
+  const isPurelyInvited = communities.length > 0 && !communities.some(c => c.owner_id === userProfile?.id);
+  const isUnlicensedPlatformMember = isPurelyInvited && userProfile?.license_status === 'UNLICENSED';
 
   const renderCharityManagement = () => {
     if (charitySubView === 'suggestions') {
@@ -911,17 +914,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         <div className="mt-8 pt-8 border-t border-surface-container space-y-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Community Switcher</h3>
-            <button 
-              onClick={() => setIsCreatingCommunity(true)}
-              disabled={!canCreateNewCommunity}
-              className={cn(
-                "flex items-center gap-1 text-[10px] font-black uppercase tracking-widest transition-colors",
-                canCreateNewCommunity ? "text-primary hover:text-secondary" : "text-outline cursor-not-allowed opacity-50"
-              )}
-            >
-              <Plus className="w-3 h-3" />
-              New Community
-            </button>
           </div>
 
           {/* Single Dropdown for Switching & Management */}
@@ -1245,9 +1237,29 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           )}
 
           <div className="flex gap-3 pt-2">
-            <button className="flex-1 py-3 px-4 rounded-xl bg-white text-primary text-xs font-bold flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors">
-              <ReceiptText className="w-4 h-4" />
-              Billing History
+            <button 
+              onClick={async () => {
+                if (isUnlicensedPlatformMember) {
+                  try {
+                    await updateUserProfile({ license_status: 'LICENSED', license_type: 'SELF' });
+                    const wantsCommunity = window.confirm("Your personal platform license is now active! Would you also like to create a new community of your own?");
+                    if (wantsCommunity) {
+                      setIsCreatingCommunity(true);
+                    }
+                  } catch (err) {
+                    console.error('Failed to update license', err);
+                  }
+                } else if (canCreateNewCommunity) {
+                  setIsCreatingCommunity(true);
+                } else {
+                  const trialCommunity = communities.find(c => c.owner_id === userProfile?.id && c.type === 'TRIAL');
+                  if (trialCommunity) licenseCommunity(trialCommunity.id);
+                }
+              }}
+              className="flex-1 py-3 px-4 rounded-xl bg-white text-primary text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
+            >
+              <Sparkles className="w-4 h-4" />
+              {isUnlicensedPlatformMember ? 'License' : 'Upgrade'}
             </button>
           </div>
         </div>
