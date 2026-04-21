@@ -15,11 +15,13 @@ export interface CommunityNotice {
   authorImage: string;
   timestamp: string;
   isLarge?: boolean;
+  isCommunityPick?: boolean;
   // Charity integration
   charityId?: string;
   charityPercentage?: number;
   isPublic?: boolean;
   price?: number;
+  community_price?: number;
   status?: 'Active' | 'Pinned' | 'deleted' | 'Archived' | 'PendingPublic' | 'Rejected' | 'ChangesRequested';
   deleted_at?: string;
   expires_at?: string;
@@ -230,6 +232,7 @@ export interface Community {
   name: string;
   owner_id: string;
   type: 'TRIAL' | 'LICENSED';
+  createdAt?: any;
   license_id?: string;
   trial_end_date: any;
   status: 'ACTIVE' | 'READ-ONLY' | 'Live' | 'Maintenance' | 'Alert';

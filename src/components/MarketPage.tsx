@@ -8,12 +8,20 @@ import { Wrench, Dog, Utensils } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { BUSINESS_CATEGORIES } from '../constants';
+import type { Business } from '../types';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   Wrench: <Wrench className="w-8 h-8" />,
   Dog: <Dog className="w-8 h-8" />,
   Utensils: <Utensils className="w-8 h-8" />,
 };
+
+interface MarketBusiness extends Business {
+  distance: string;
+  isExplicitlyLinked: boolean;
+  isMemberBusiness: boolean;
+  status: 'Open' | 'Closed';
+}
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371; // Radius of the earth in km
@@ -76,7 +84,7 @@ export const MarketPage = ({ onViewOnMap, onOpenChat }: { onViewOnMap?: (lat: nu
     if (!coverageArea) return [];
 
     // Combine internal community businesses and user businesses
-    const internalBusinesses = (currentCommunity?.businesses || []).map(b => ({
+    const internalBusinesses: MarketBusiness[] = (currentCommunity?.businesses || []).map(b => ({
       ...b,
       isExternal: false,
       isVerified: b.isVerified ?? true,
@@ -88,7 +96,7 @@ export const MarketPage = ({ onViewOnMap, onOpenChat }: { onViewOnMap?: (lat: nu
         : '0.0 km'
     }));
 
-    const allCommunityUserBusinesses = (communityBusinesses || []).map(b => ({
+    const allCommunityUserBusinesses: MarketBusiness[] = (communityBusinesses || []).map(b => ({
       id: b.id,
       name: b.name,
       category: b.category,
@@ -111,7 +119,7 @@ export const MarketPage = ({ onViewOnMap, onOpenChat }: { onViewOnMap?: (lat: nu
       isExplicitlyLinked: true
     }));
 
-    let combined = [...allCommunityUserBusinesses, ...internalBusinesses];
+    let combined: MarketBusiness[] = [...allCommunityUserBusinesses, ...internalBusinesses];
 
     // Filter by coverage area radius
     combined = combined.filter(b => {

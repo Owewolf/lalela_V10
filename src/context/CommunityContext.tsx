@@ -434,7 +434,7 @@ export const CommunityProvider: React.FC<{ children: ReactNode }> = ({ children 
           user_id: community.owner_id,
           community_id: currentCommunityId,
           role: 'Admin',
-          joined_at: community.createdAt || serverTimestamp(),
+          joined_at: community.createdAt ?? serverTimestamp(),
           status: 'ACTIVE',
           name: liveLoc?.name || ownerProfileData?.name || 'Admin',
           image: liveLoc?.image || ownerProfileData?.profile_image || `https://picsum.photos/seed/${community.owner_id}/100/100`,

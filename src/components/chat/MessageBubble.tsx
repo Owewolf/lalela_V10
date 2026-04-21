@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
-import { Message, UserRole } from '../../types';
+import { Message } from '../../types';
 import { useFirebase } from '../../context/FirebaseContext';
 import { Check, CheckCheck } from 'lucide-react';
 
@@ -41,8 +41,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSequent
             <span className={cn(
               "px-1 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-tighter",
               message.senderRole === 'Admin' ? "bg-error text-white" : 
-              message.senderRole === 'Responder' ? "bg-secondary text-white" :
-              message.senderRole === 'Author' ? "bg-primary text-white" :
+              message.senderRole === 'Moderator' ? "bg-secondary text-white" :
+              message.senderRole === 'Liaison' ? "bg-primary text-white" :
               "bg-primary/10 text-primary"
             )}>
               {message.senderRole}

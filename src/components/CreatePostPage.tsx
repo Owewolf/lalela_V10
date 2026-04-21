@@ -24,6 +24,7 @@ import { useFirebase } from '../context/FirebaseContext';
 import { PostConfirmationModal } from './PostConfirmationModal';
 import { BUSINESS_CATEGORIES } from '../constants';
 import { uploadImage } from '../lib/uploadImage';
+import type { CommunityNotice } from '../types';
 
 const getCtaConfig = (postType: PostType, urgency: Urgency, isEditing: boolean) => {
   if (isEditing) return { ctaLabel: 'Update Post', themeColor: 'bg-primary' };
@@ -662,7 +663,18 @@ export const CreatePostPage = ({
       return;
     }
 
-    const postData = {
+    const urgencyMap: Record<Urgency, NonNullable<CommunityNotice['urgency']>> = {
+      emergency: 'emergency',
+      warning: 'high',
+      info: 'normal',
+      general: 'low',
+    };
+
+    const resolvedUrgency: CommunityNotice['urgency'] | undefined = postType === 'notice'
+      ? urgencyMap[urgency]
+      : undefined;
+
+    const postData: Omit<CommunityNotice, 'id' | 'timestamp'> = {
       type: postType,
       postSubtype: isEmergency ? 'emergency' as const : 'listing' as const,
       title: isEmergency ? emergencyTitle : title,
@@ -680,7 +692,7 @@ export const CreatePostPage = ({
       price: postType === 'listing' ? numericPrice : undefined,
       community_price: postType === 'listing' ? numericPrice : undefined,
       public_price: postType === 'listing' ? (isPublic ? (numericPrice + charityAmount) : numericPrice) : undefined,
-      urgency: postType === 'notice' ? (urgency === 'warning' ? 'high' : urgency === 'info' ? 'normal' : urgency === 'general' ? 'low' : urgency) : undefined,
+      urgency: resolvedUrgency,
       urgency_level: postType === 'notice' ? urgency : undefined,
       locationName,
       latitude,

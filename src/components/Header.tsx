@@ -105,12 +105,7 @@ export const Header: React.FC<HeaderProps> = ({ onBack, showBack, title, onToggl
             )}
           </button>
 
-          <div className="flex items-center gap-3 pl-4 border-l border-surface-container">
-            <div className="flex flex-col items-end mr-1">
-              <span className="text-xs font-black text-primary leading-none">
-                {userProfile?.name || 'User'}
-              </span>
-            </div>
+          <div className="flex items-center pl-4 border-l border-surface-container">
             <div className={cn(
               "relative w-10 h-10 rounded-full p-0.5 shadow-md transition-all duration-300",
               isLicensed ? "bg-emerald-500" : "bg-error"
