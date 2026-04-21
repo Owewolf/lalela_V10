@@ -141,8 +141,13 @@ export const CreatePostPage = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Image must be smaller than 2MB');
+    if (postsImage) {
+      alert('Listings allow only one image');
+      return;
+    }
+
+    if (file.size > 4 * 1024 * 1024) {
+      alert('Image must be smaller than 4MB');
       return;
     }
 
@@ -383,16 +388,18 @@ export const CreatePostPage = ({
       <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-4 shadow-sm border border-surface-container">
         <h3 className="font-headline font-bold text-primary">Photos</h3>
         <div className="grid grid-cols-3 gap-3">
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            className={cn(
-              "aspect-square bg-surface-container-low rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 text-on-surface-variant cursor-pointer hover:bg-surface-container-high transition-all",
-              isUploading && "animate-pulse"
-            )}
-          >
-            <Camera className="w-8 h-8 mb-1" />
-            <span className="text-[10px] font-medium">Add Photo</span>
-          </div>
+          {!postsImage && (
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                "aspect-square bg-surface-container-low rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 text-on-surface-variant cursor-pointer hover:bg-surface-container-high transition-all",
+                isUploading && "animate-pulse"
+              )}
+            >
+              <Camera className="w-8 h-8 mb-1" />
+              <span className="text-[10px] font-medium">Add Photo</span>
+            </div>
+          )}
           {postsImage && (
             <div className="aspect-square bg-surface-container-low rounded-2xl overflow-hidden relative group">
               <img 
@@ -410,7 +417,7 @@ export const CreatePostPage = ({
             </div>
           )}
         </div>
-        <p className="text-[10px] text-on-surface-variant px-1">Upload a clear image of your item.</p>
+        <p className="text-[10px] text-on-surface-variant px-1">Max 1 photo, up to 4MB.</p>
       </section>
 
       {/* Details */}

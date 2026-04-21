@@ -158,10 +158,12 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
   const [longitude, setLongitude] = useState<number | undefined>(postToEdit?.longitude);
   const [locationSource, setLocationSource] = useState<'profile_default' | 'user_selected' | 'current_location'>(postToEdit?.source || 'profile_default');
   const [postsImage, setPostsImage] = useState<string>(postToEdit?.posts_image || '');
+  const [postsImage2, setPostsImage2] = useState<string>(postToEdit?.posts_image_2 || '');
   const [expiresAt, setExpiresAt] = useState(() => getInitialExpiryDate(postSubtype, postToEdit));
   const [isUploading, setIsUploading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef2 = React.useRef<HTMLInputElement>(null);
 
   const theme = SUBTYPE_THEME[postSubtype];
   const config = POST_SUBTYPE_CONFIG[postSubtype];
@@ -198,14 +200,32 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Image must be smaller than 2MB');
+    if (file.size > 4 * 1024 * 1024) {
+      alert('Image must be smaller than 4MB');
       return;
     }
     setIsUploading(true);
     try {
       const url = await uploadImage(file, 'posts', user?.uid ?? 'anon', postsImage);
       setPostsImage(url);
+    } catch {
+      alert('Image upload failed. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSecondImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      alert('Image must be smaller than 4MB');
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file, 'posts', user?.uid ?? 'anon', postsImage2);
+      setPostsImage2(url);
     } catch {
       alert('Image upload failed. Please try again.');
     } finally {
@@ -233,6 +253,7 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
       longitude,
       source: locationSource,
       posts_image: postsImage,
+      posts_image_2: postsImage2 || undefined,
       expires_at: postSubtype === 'warning' ? undefined : expiresAt,
     };
 
@@ -366,29 +387,62 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
 
           {/* Image Upload */}
           <div className="group">
-            <label className="block text-sm font-semibold mb-3 ml-1 text-on-surface-variant">Add Photos</label>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className={cn(
-                "relative w-full aspect-video bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-3xl flex flex-col items-center justify-center gap-2 hover:border-primary transition-colors cursor-pointer group-hover:bg-surface-container overflow-hidden",
-                isUploading && "animate-pulse"
-              )}
-            >
-              {postsImage ? (
-                <>
-                  <img src={postsImage} alt="Post" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setPostsImage(''); }}
-                    className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Camera className="w-10 h-10 text-outline-variant group-hover:text-primary transition-colors" />
-                  <p className="text-sm font-medium text-on-surface-variant">Upload image or take photo</p>
-                </>
+            <label className="block text-sm font-semibold mb-3 ml-1 text-on-surface-variant">Add Photos (max 2, up to 4MB each)</label>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "relative w-full aspect-video bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-3xl flex flex-col items-center justify-center gap-2 hover:border-primary transition-colors cursor-pointer group-hover:bg-surface-container overflow-hidden",
+                  isUploading && "animate-pulse"
+                )}
+              >
+                {postsImage ? (
+                  <>
+                    <img src={postsImage} alt="Notice" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPostsImage('');
+                        setPostsImage2('');
+                      }}
+                      className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-10 h-10 text-outline-variant group-hover:text-primary transition-colors" />
+                    <p className="text-sm font-medium text-on-surface-variant">Upload first image</p>
+                  </>
+                )}
+              </div>
+              {postsImage && (
+                <div
+                  onClick={() => !postsImage2 && fileInputRef2.current?.click()}
+                  className={cn(
+                    "relative w-full aspect-video bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-3xl flex flex-col items-center justify-center gap-2 transition-colors overflow-hidden",
+                    !postsImage2 && "cursor-pointer hover:border-primary group-hover:bg-surface-container",
+                    isUploading && "animate-pulse"
+                  )}
+                >
+                  {postsImage2 ? (
+                    <>
+                      <img src={postsImage2} alt="Notice" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPostsImage2(''); }}
+                        className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-10 h-10 text-outline-variant group-hover:text-primary transition-colors" />
+                      <p className="text-sm font-medium text-on-surface-variant">Upload second image</p>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -494,6 +548,13 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
         type="file"
         ref={fileInputRef}
         onChange={handleImageUpload}
+        accept="image/*"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={fileInputRef2}
+        onChange={handleSecondImageUpload}
         accept="image/*"
         className="hidden"
       />

@@ -1,7 +1,7 @@
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
-const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_SIZE = 4 * 1024 * 1024; // 4MB
 
 export type UploadFolder = 'profiles' | 'posts';
 
@@ -16,7 +16,7 @@ export async function uploadImage(
   existingUrl?: string,
 ): Promise<string> {
   if (file.size > MAX_SIZE) {
-    throw new Error('Image must be smaller than 2MB');
+    throw new Error('Image must be smaller than 4MB');
   }
 
   // Delete the previous Storage file if it was stored there
