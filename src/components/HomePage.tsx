@@ -479,6 +479,7 @@ export const HomePage = ({
                   const zoomLevel = Math.round(Math.log2(20037.5 / radiusKm) - 1);
                   setMapZoom(Math.max(10, Math.min(18, zoomLevel)));
                   setResetTrigger(t => t + 1);
+                  setMapUnlocked(false);
                 }
               }}
               className="flex items-center gap-2 px-4 py-2 bg-surface-container-high text-primary rounded-xl text-xs font-bold hover:bg-surface-container-highest transition-all active:scale-95"

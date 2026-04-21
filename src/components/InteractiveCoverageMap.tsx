@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { 
   Siren, 
@@ -100,6 +100,16 @@ const MapInteractionController = ({ isLocked }: { isLocked: boolean }) => {
       map.keyboard.enable();
     }
   }, [isLocked, map]);
+  return null;
+};
+
+const MapUnlockOnClick = ({ isLocked, onUnlock }: { isLocked: boolean; onUnlock?: () => void }) => {
+  useMapEvents({
+    click: () => {
+      if (isLocked) onUnlock?.();
+    },
+  });
+
   return null;
 };
 
@@ -226,6 +236,7 @@ export const InteractiveCoverageMap: React.FC<InteractiveCoverageMapProps> = ({
           />
           <RecenterMap center={mapCenter} trigger={resetTrigger} zoom={zoom} />
           <MapInteractionController isLocked={isLocked} />
+          <MapUnlockOnClick isLocked={isLocked} onUnlock={onUnlock} />
 
           {/* Coverage Area / Emergency Impact Zone */}
           {currentCommunity?.coverageArea && (
