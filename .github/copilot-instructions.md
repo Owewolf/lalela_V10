@@ -95,6 +95,13 @@ You are an AI development assistant working on the **LaLela project**. You opera
 
 * After execution, confirm to the user what was built, committed, and pushed.
 
+* **Lint check is mandatory before any deploy:**
+
+  * `deploy.sh` automatically runs `npm run lint` (TypeScript type check via `tsc --noEmit`) as the **first step** — before the build
+  * If lint fails, the deploy is hard-blocked — fix all TypeScript errors before retrying
+  * Never advise bypassing or skipping the lint gate
+  * If advising a manual deploy flow, explicitly remind the user to run `npm run lint` first and confirm zero errors
+
 ---
 
 ### **10. Deployment Asset & File Structure Rules (CRITICAL)**

@@ -57,6 +57,7 @@ function AppContent() {
   const [adminOptions, setAdminOptions] = useState<{ initialView?: 'dashboard' | 'moderation' | 'members', readOnly?: boolean, guidedSetup?: boolean }>({});
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [initialManageCharity, setInitialManageCharity] = useState(false);
+  const [initialSuggestCharity, setInitialSuggestCharity] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showBenefitsPricing, setShowBenefitsPricing] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
@@ -634,6 +635,20 @@ function AppContent() {
             onCenterReset={() => setMapCenter(null)} 
             onOpenEmergencyHub={(post) => setActiveEmergencyPost(post)}
             onOpenChat={handleOpenChatFromPost}
+            onOpenCharityHub={() => {
+              const role = currentCommunity?.userRole;
+              const isAdmin = role === 'Admin' || role === 'Moderator';
+              setAdminOptions({ initialView: 'dashboard', readOnly: !isAdmin });
+              setActiveTab('admin');
+            }}
+            onManageCharity={() => {
+              setInitialManageCharity(true);
+              setActiveTab('settings');
+            }}
+            onSuggestCharity={() => {
+              setInitialSuggestCharity(true);
+              setActiveTab('settings');
+            }}
             onStartEmergencyPost={() => {
               setPostTypeForCreate('notice');
               setUrgencyForCreate('emergency');
@@ -754,6 +769,8 @@ function AppContent() {
             }}
             initialManageCharity={initialManageCharity}
             onCloseManageCharity={() => setInitialManageCharity(false)}
+            initialSuggestCharity={initialSuggestCharity}
+            onCloseSuggestCharity={() => setInitialSuggestCharity(false)}
             onNavigateToNotificationSettings={() => setShowNotificationSettings(true)}
           />
         );

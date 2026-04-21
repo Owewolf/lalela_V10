@@ -23,7 +23,10 @@ export const HomePage = ({
   onOpenChat,
   onStartEmergencyPost,
   onStartIncidentReport,
-  onEditPost
+  onEditPost,
+  onOpenCharityHub,
+  onManageCharity,
+  onSuggestCharity
 }: { 
   initialCenter?: { lat: number, lng: number } | null, 
   onCenterReset?: () => void,
@@ -32,6 +35,9 @@ export const HomePage = ({
   onStartEmergencyPost?: () => void,
   onStartIncidentReport?: (urgency: 'general' | 'info' | 'warning' | 'emergency') => void,
   onEditPost?: (post: CommunityNotice) => void,
+  onOpenCharityHub?: () => void,
+  onManageCharity?: () => void,
+  onSuggestCharity?: () => void,
 }) => {
   const mapSectionRef = React.useRef<HTMLDivElement>(null);
 
@@ -159,6 +165,25 @@ export const HomePage = ({
     .filter(p => p.type === 'listing')
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 3);
+
+  const communityData = (currentCommunity as unknown as Record<string, unknown>) ?? {};
+  const selectedCharityId = typeof communityData.selected_charity === 'string' ? communityData.selected_charity : undefined;
+  const selectedCharity = charities.find(c => c.id === selectedCharityId)
+    ?? charities.find(c => c.isFeatured)
+    ?? (charities.length === 1 ? charities[0] : undefined);
+  const charityDescription = typeof communityData.charity_description === 'string'
+    ? communityData.charity_description
+    : selectedCharity?.description;
+  const charityImage = typeof communityData.charity_image === 'string'
+    ? communityData.charity_image
+    : selectedCharity?.logo || selectedCharity?.coverImage;
+  const impactStats = typeof communityData.impact_stats === 'string'
+    ? communityData.impact_stats
+    : selectedCharity?.totalRaised !== undefined
+      ? `Community-backed initiative • R${selectedCharity.totalRaised.toLocaleString()} raised`
+      : undefined;
+  const hasNoNotices = notices.length === 0;
+  const canManageCharity = userRole === 'Admin' || userRole === 'Moderator';
 
   const formatDate = (dateStr: string) => {
     try {
@@ -632,6 +657,103 @@ export const HomePage = ({
               </div>
             </div>
             ))
+          )}
+        </div>
+      </section>
+
+      {/* Community Charity Reflection Block */}
+      <section className="space-y-4">
+        <div className="px-2">
+          <h3 className="text-lg font-bold font-headline text-primary">Community Charity</h3>
+          <p className="text-xs text-on-surface-variant">Listen, connect, and act together.</p>
+        </div>
+
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onOpenCharityHub?.()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onOpenCharityHub?.();
+            }
+          }}
+          className={cn(
+            "w-full text-left rounded-3xl border bg-surface-container-lowest p-4 shadow-sm transition-all active:scale-[0.99] hover:bg-surface-bright",
+            hasNoNotices ? "ring-1 ring-primary/15 border-primary/20" : "border-surface-container"
+          )}
+        >
+          {selectedCharity ? (
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-surface-container-low shrink-0 border border-outline-variant/10">
+                {charityImage ? (
+                  <img
+                    src={charityImage}
+                    alt={selectedCharity.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-outline">
+                    <Heart className="w-5 h-5" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0 space-y-2">
+                <h4 className="text-base font-bold text-primary truncate">{selectedCharity.name}</h4>
+                <p className="text-sm text-on-surface-variant line-clamp-3">
+                  {charityDescription || 'Supporting this month as a community-backed initiative.'}
+                </p>
+                {impactStats && (
+                  <p className="text-[11px] font-semibold text-outline line-clamp-1">{impactStats}</p>
+                )}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (canManageCharity) {
+                        onManageCharity?.();
+                        return;
+                      }
+                      onSuggestCharity?.();
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wide text-white transition-opacity",
+                      canManageCharity ? "bg-primary hover:opacity-90" : "bg-secondary hover:opacity-90"
+                    )}
+                  >
+                    {canManageCharity ? 'Manage Charity' : 'Suggest Charity'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <h4 className="text-base font-bold text-primary">Suggest a charity</h4>
+              <p className="text-sm text-on-surface-variant">Admins can assign a charity to spotlight community impact.</p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (canManageCharity) {
+                      onManageCharity?.();
+                      return;
+                    }
+                    onSuggestCharity?.();
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wide text-white transition-opacity",
+                    canManageCharity ? "bg-primary hover:opacity-90" : "bg-secondary hover:opacity-90"
+                  )}
+                >
+                  {canManageCharity ? 'Manage Charity' : 'Suggest Charity'}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </section>

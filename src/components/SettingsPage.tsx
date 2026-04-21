@@ -204,6 +204,8 @@ interface SettingsPageProps {
   onNavigateToNotificationSettings: () => void;
   initialManageCharity?: boolean;
   onCloseManageCharity?: () => void;
+  initialSuggestCharity?: boolean;
+  onCloseSuggestCharity?: () => void;
 }
 
 type CharitySubView = 'list' | 'add' | 'edit' | 'suggestions';
@@ -215,7 +217,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onNavigateToCommunityDashboard,
   onNavigateToNotificationSettings,
   initialManageCharity = false,
-  onCloseManageCharity
+  onCloseManageCharity,
+  initialSuggestCharity = false,
+  onCloseSuggestCharity
 }) => {
   const { userProfile, updateUserProfile, signOut, user } = useFirebase();
   const { 
@@ -257,11 +261,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   }, [initialManageCharity]);
 
+  React.useEffect(() => {
+    if (initialSuggestCharity) {
+      setSuggestionError('');
+      setIsSuggestingCharity(true);
+    }
+  }, [initialSuggestCharity]);
+
   const handleCloseCharity = () => {
     setIsManagingCharity(false);
     setCharitySubView('list');
     setSelectedCharity(null);
     onCloseManageCharity?.();
+  };
+
+  const handleCloseSuggestCharity = () => {
+    setSuggestionError('');
+    setIsSuggestingCharity(false);
+    onCloseSuggestCharity?.();
   };
 
   const enabledCategories = React.useMemo(() => {
@@ -1273,7 +1290,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => { setSuggestionError(''); setIsSuggestingCharity(false); }}
+              onClick={handleCloseSuggestCharity}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             />
             <motion.div
@@ -1289,7 +1306,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <p className="text-xs text-on-surface-variant mt-1">Propose a cause you care about for your community.</p>
                   </div>
                   <button 
-                    onClick={() => { setSuggestionError(''); setIsSuggestingCharity(false); }}
+                    onClick={handleCloseSuggestCharity}
                     className="p-2 hover:bg-surface-container-low rounded-full transition-colors"
                   >
                     <X className="w-5 h-5 text-outline" />
@@ -1324,7 +1341,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       website: formData.get('website') as string,
                     });
                     (e.currentTarget as HTMLFormElement).reset();
-                    setIsSuggestingCharity(false);
+                    handleCloseSuggestCharity();
                   }}
                   className="space-y-4"
                 >
@@ -1388,7 +1405,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   <div className="pt-4 flex gap-3">
                     <button 
                       type="button"
-                      onClick={() => { setSuggestionError(''); setIsSuggestingCharity(false); }}
+                      onClick={handleCloseSuggestCharity}
                       className="flex-1 py-3.5 rounded-2xl bg-surface-container-low text-outline font-bold hover:bg-surface-container-high transition-colors"
                     >
                       Cancel
