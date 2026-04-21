@@ -171,17 +171,60 @@ export const HomePage = ({
   const selectedCharity = charities.find(c => c.id === selectedCharityId)
     ?? charities.find(c => c.isFeatured)
     ?? (charities.length === 1 ? charities[0] : undefined);
+
+  const approvedPublicCharityListings = React.useMemo(() => {
+    if (!selectedCharity) return [] as CommunityNotice[];
+
+    return posts.filter((post) => {
+      if (post.type !== 'listing') return false;
+      if (!post.isPublic) return false;
+      if (post.charityId !== selectedCharity.id) return false;
+
+      const normalizedStatus = typeof post.status === 'string' ? post.status.toLowerCase() : '';
+      return normalizedStatus === 'active' || normalizedStatus === 'pinned';
+    });
+  }, [posts, selectedCharity]);
+
+  const potentialRaisedFromListings = React.useMemo(() => {
+    const getListingContribution = (listing: CommunityNotice) => {
+      if (typeof listing.charity_amount === 'number' && Number.isFinite(listing.charity_amount)) {
+        return Math.max(0, listing.charity_amount);
+      }
+
+      const basePrice = typeof listing.community_price === 'number'
+        ? listing.community_price
+        : typeof listing.price === 'number'
+          ? listing.price
+          : 0;
+
+      const publicPrice = typeof listing.public_price === 'number'
+        ? listing.public_price
+        : typeof listing.price === 'number'
+          ? listing.price
+          : basePrice;
+
+      return Math.max(0, publicPrice - basePrice);
+    };
+
+    return approvedPublicCharityListings.reduce((sum, listing) => sum + getListingContribution(listing), 0);
+  }, [approvedPublicCharityListings]);
+
+  const publicListingContributionCount = approvedPublicCharityListings.length;
+  const fundraisingGoal = typeof selectedCharity?.fundraisingGoal === 'number' ? selectedCharity.fundraisingGoal : undefined;
+  const hasFundraisingGoal = typeof fundraisingGoal === 'number' && fundraisingGoal > 0;
+  const proposedAmount = hasFundraisingGoal
+    ? fundraisingGoal
+    : Math.max(potentialRaisedFromListings, 1);
+  const potentialProgressPercent = Math.min(
+    100,
+    Math.max((potentialRaisedFromListings / proposedAmount) * 100, 0)
+  );
   const charityDescription = typeof communityData.charity_description === 'string'
     ? communityData.charity_description
     : selectedCharity?.description;
   const charityImage = typeof communityData.charity_image === 'string'
     ? communityData.charity_image
     : selectedCharity?.logo || selectedCharity?.coverImage;
-  const impactStats = typeof communityData.impact_stats === 'string'
-    ? communityData.impact_stats
-    : selectedCharity?.totalRaised !== undefined
-      ? `Community-backed initiative • R${selectedCharity.totalRaised.toLocaleString()} raised`
-      : undefined;
   const hasNoNotices = notices.length === 0;
   const canManageCharity = userRole === 'Admin' || userRole === 'Moderator';
 
@@ -679,10 +722,27 @@ export const HomePage = ({
             }
           }}
           className={cn(
-            "w-full text-left rounded-3xl border bg-surface-container-lowest p-4 shadow-sm transition-all active:scale-[0.99] hover:bg-surface-bright",
+            "relative overflow-hidden w-full text-left rounded-3xl border bg-surface-container-lowest p-4 shadow-sm transition-all active:scale-[0.99] hover:bg-surface-bright",
             hasNoNotices ? "ring-1 ring-primary/15 border-primary/20" : "border-surface-container"
           )}
         >
+          {selectedCharity && charityImage && (
+            <div className="absolute inset-0 opacity-20 pointer-events-none" aria-hidden="true">
+              <img
+                src={charityImage}
+                alt=""
+                className="w-full h-full object-cover"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          )}
+          <div
+            className="absolute inset-0 bg-gradient-to-br from-white via-surface/98 to-primary/26 sm:from-white/94 sm:via-surface/90 sm:to-primary/14 pointer-events-none"
+            aria-hidden="true"
+          />
+
+          <div className="relative z-10">
           {selectedCharity ? (
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 rounded-2xl overflow-hidden bg-surface-container-low shrink-0 border border-outline-variant/10">
@@ -706,9 +766,21 @@ export const HomePage = ({
                 <p className="text-sm text-on-surface-variant line-clamp-3">
                   {charityDescription || 'Supporting this month as a community-backed initiative.'}
                 </p>
-                {impactStats && (
-                  <p className="text-[11px] font-semibold text-outline line-clamp-1">{impactStats}</p>
-                )}
+                <div className="space-y-1 pt-1">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 flex-1 rounded-full bg-primary/10 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${potentialProgressPercent}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                        className="h-full rounded-full bg-primary"
+                      />
+                    </div>
+                    <span className="text-[10px] font-semibold text-primary whitespace-nowrap">
+                      R{proposedAmount.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <button
                     type="button"
@@ -755,6 +827,7 @@ export const HomePage = ({
               </div>
             </div>
           )}
+          </div>
         </div>
       </section>
 

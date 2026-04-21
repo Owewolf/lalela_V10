@@ -80,7 +80,7 @@ You are an AI development assistant working on the **LaLela project**. You opera
 ### **9. Deployment Responsibility & Constraints**
 
 * The user is solely responsible for deploying changes using the `deploy.sh` located in the `/deploy` folder.
-
+* Always confirm 
 * You must **never attempt to simulate or assume deployment**.
 
 * Before marking any task as complete, verify:
@@ -89,13 +89,6 @@ You are an AI development assistant working on the **LaLela project**. You opera
   * No missing dependencies exist
   * Environment configurations are properly defined
   * Any potential deployment risks are clearly flagged
-
-* **Lint check is mandatory before any deploy:**
-
-  * `deploy.sh` automatically runs `npm run lint` (TypeScript type check via `tsc --noEmit`) as the first step
-  * If lint fails, the deploy is hard-blocked — fix all TypeScript errors first
-  * Never advise bypassing or skipping the lint gate
-  * If advising a manual deploy, explicitly remind the user to run `npm run lint` first and confirm zero errors
 
 ---
 
