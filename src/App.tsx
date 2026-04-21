@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback, Suspense, lazy } from 'react';
 import { Plus, Mail } from 'lucide-react';
 import { motion } from 'motion/react';
 import { isSignInWithEmailLink, signInWithEmailLink, updatePassword } from 'firebase/auth';
@@ -6,28 +6,36 @@ import { auth } from './firebase';
 import { Header } from './components/Header';
 import { NotificationCenter } from './components/NotificationCenter';
 import { BottomNav } from './components/BottomNav';
-import { HomePage } from './components/HomePage';
-import { MarketPage } from './components/MarketPage';
-import { ChatPage } from './components/ChatPage';
-import { ChatDetailPage } from './components/ChatDetailPage';
-import { CreatePostPage } from './components/CreatePostPage';
-import { CreateWarningNotice } from './components/notices/CreateWarningNotice';
-import { CreateGeneralNotice } from './components/notices/CreateGeneralNotice';
-import { CreateInfoNotice } from './components/notices/CreateInfoNotice';
-import { SettingsPage } from './components/SettingsPage';
-import { PostsPage } from './components/PostsPage';
-import { AccountSecurityPage } from './components/AccountSecurityPage';
-import { AdminDashboard } from './components/AdminDashboard';
-import { EmergencyHub } from './components/EmergencyHub';
+import { MobileSidebar } from './components/MobileSidebar';
 import { CommunityProvider, useCommunity } from './context/CommunityContext';
 import { FirebaseProvider, useFirebase } from './context/FirebaseContext';
 import { GoogleMapsProvider } from './context/GoogleMapsContext';
-import { Onboarding } from './components/Onboarding';
-import { LandingPage } from './components/LandingPage';
-import { BenefitsPricingPage } from './components/BenefitsPricingPage';
-import { NotificationSettingsPage } from './components/NotificationSettingsPage';
-import { MobileSidebar } from './components/MobileSidebar';
 import { APP_LOGO_PATH } from './constants';
+
+// Lazy-loaded page components — loaded only when first navigated to
+const HomePage = lazy(() => import('./components/HomePage').then(m => ({ default: m.HomePage })));
+const MarketPage = lazy(() => import('./components/MarketPage').then(m => ({ default: m.MarketPage })));
+const ChatPage = lazy(() => import('./components/ChatPage').then(m => ({ default: m.ChatPage })));
+const ChatDetailPage = lazy(() => import('./components/ChatDetailPage').then(m => ({ default: m.ChatDetailPage })));
+const CreatePostPage = lazy(() => import('./components/CreatePostPage').then(m => ({ default: m.CreatePostPage })));
+const CreateWarningNotice = lazy(() => import('./components/notices/CreateWarningNotice').then(m => ({ default: m.CreateWarningNotice })));
+const CreateGeneralNotice = lazy(() => import('./components/notices/CreateGeneralNotice').then(m => ({ default: m.CreateGeneralNotice })));
+const CreateInfoNotice = lazy(() => import('./components/notices/CreateInfoNotice').then(m => ({ default: m.CreateInfoNotice })));
+const SettingsPage = lazy(() => import('./components/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const PostsPage = lazy(() => import('./components/PostsPage').then(m => ({ default: m.PostsPage })));
+const AccountSecurityPage = lazy(() => import('./components/AccountSecurityPage').then(m => ({ default: m.AccountSecurityPage })));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const EmergencyHub = lazy(() => import('./components/EmergencyHub').then(m => ({ default: m.EmergencyHub })));
+const Onboarding = lazy(() => import('./components/Onboarding').then(m => ({ default: m.Onboarding })));
+const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
+const BenefitsPricingPage = lazy(() => import('./components/BenefitsPricingPage').then(m => ({ default: m.BenefitsPricingPage })));
+const NotificationSettingsPage = lazy(() => import('./components/NotificationSettingsPage').then(m => ({ default: m.NotificationSettingsPage })));
+
+const PageLoader = () => (
+  <div className="min-h-[60vh] flex items-center justify-center">
+    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 function AppContent() {
   const { user, userProfile, loading } = useFirebase();
@@ -452,18 +460,22 @@ function AppContent() {
   if (!user) {
     if (showBenefitsPricing) {
       return (
-        <BenefitsPricingPage 
-          onBack={() => setShowBenefitsPricing(false)}
-          onUpgrade={() => setShowBenefitsPricing(false)}
-        />
+        <Suspense fallback={<div className="min-h-screen bg-surface flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+          <BenefitsPricingPage 
+            onBack={() => setShowBenefitsPricing(false)}
+            onUpgrade={() => setShowBenefitsPricing(false)}
+          />
+        </Suspense>
       );
     }
     return (
-      <LandingPage 
-        onJoin={() => {}} 
-        onStart={() => {}} 
-        onViewBenefits={() => setShowBenefitsPricing(true)}
-      />
+      <Suspense fallback={<div className="min-h-screen bg-surface flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+        <LandingPage 
+          onJoin={() => {}} 
+          onStart={() => {}} 
+          onViewBenefits={() => setShowBenefitsPricing(true)}
+        />
+      </Suspense>
     );
   }
 
@@ -525,7 +537,11 @@ function AppContent() {
   }
 
   if (shouldShowOnboarding) {
-    return <Onboarding />;
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-surface flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+        <Onboarding />
+      </Suspense>
+    );
   }
 
   // Determine if user is in READ-ONLY mode (expired invited member, unlicensed)
@@ -789,7 +805,9 @@ function AppContent() {
         onOpenSidebar={() => setIsSidebarOpen(true)}
       />
       
-      {renderContent()}
+      <Suspense fallback={<PageLoader />}>
+        {renderContent()}
+      </Suspense>
 
       <MobileSidebar
         isOpen={isSidebarOpen}
