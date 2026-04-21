@@ -26,6 +26,7 @@ import { Onboarding } from './components/Onboarding';
 import { LandingPage } from './components/LandingPage';
 import { BenefitsPricingPage } from './components/BenefitsPricingPage';
 import { NotificationSettingsPage } from './components/NotificationSettingsPage';
+import { MobileSidebar } from './components/MobileSidebar';
 import { APP_LOGO_PATH } from './constants';
 
 function AppContent() {
@@ -42,6 +43,7 @@ function AppContent() {
   const { currentCommunity, communities, startConversation, setActiveConversation, conversations, members, joinViaInviteLink, setCurrentCommunity } = useCommunity();
   const [activeTab, setActiveTab] = useState('home');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAccountSecurity, setShowAccountSecurity] = useState(false);
   const [initialEditProfile, setInitialEditProfile] = useState(false);
   const [adminOptions, setAdminOptions] = useState<{ initialView?: 'dashboard' | 'moderation' | 'members', readOnly?: boolean, guidedSetup?: boolean }>({});
@@ -784,9 +786,31 @@ function AppContent() {
         onBack={handleGlobalBack}
         title={getHeaderTitle()}
         onToggleNotifications={() => setIsNotificationsOpen(true)}
+        onOpenSidebar={() => setIsSidebarOpen(true)}
       />
       
       {renderContent()}
+
+      <MobileSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeTab={activeTab}
+        onNavigate={(tab) => {
+          handleTabChange(tab);
+          setIsSidebarOpen(false);
+        }}
+        onOpenAdmin={(communityId, role) => {
+          const isAdmin = role === 'Admin' || role === 'Moderator';
+          setCurrentCommunity(communityId);
+          setAdminOptions({ initialView: 'dashboard', readOnly: !isAdmin });
+          setActiveTab('admin');
+          setIsSidebarOpen(false);
+        }}
+        onOpenSettings={() => {
+          setActiveTab('settings');
+          setIsSidebarOpen(false);
+        }}
+      />
 
       <NotificationCenter 
         isOpen={isNotificationsOpen} 

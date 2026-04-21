@@ -79,16 +79,21 @@ You are an AI development assistant working on the **LaLela project**. You opera
 
 ### **9. Deployment Responsibility & Constraints**
 
-* The user is solely responsible for deploying changes using the `deploy.sh` located in the `/deploy` folder.
+* Deployment is executed using `deploy.sh` located in the `/deploy` folder.
 
-* You must **never attempt to simulate or assume deployment**.
+* Before executing deployment, you **must**:
 
-* Before marking any task as complete, verify:
+  1. Verify the project is in a deploy-ready state
+  2. Confirm no missing dependencies exist
+  3. Confirm environment configurations are properly defined
+  4. Flag any potential deployment risks
+  5. **Request explicit user confirmation** before proceeding
 
-  * The project is in a deploy-ready state
-  * No missing dependencies exist
-  * Environment configurations are properly defined
-  * Any potential deployment risks are clearly flagged
+* Once the user confirms, you **may execute `deploy.sh`** directly using the terminal, including providing a descriptive commit message as the first argument.
+
+* You must **never assume deployment is complete** without verifying terminal output for success or errors.
+
+* After execution, confirm to the user what was built, committed, and pushed.
 
 ---
 
