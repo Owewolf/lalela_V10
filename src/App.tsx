@@ -126,7 +126,7 @@ function AppContent() {
   // Handle pending join after user authenticates with a complete profile
   useEffect(() => {
     const pendingCode = localStorage.getItem('pending_join_code');
-    if (!pendingCode || !user || !userProfile) return;
+    if (!pendingCode || !user || !userProfile || !userProfile.profile_completed) return;
 
     localStorage.removeItem('pending_join_code');
     localStorage.removeItem('pending_onboarding_mode');
