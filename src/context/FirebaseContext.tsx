@@ -64,10 +64,20 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const recaptchaVerifier = React.useRef<RecaptchaVerifier | null>(null);
 
   const setupRecaptcha = useCallback((containerId: string) => {
-    if (!recaptchaVerifier.current) {
-      recaptchaVerifier.current = new RecaptchaVerifier(auth, containerId, {
-        size: 'invisible',
-      });
+    if (recaptchaVerifier.current) {
+      try {
+        recaptchaVerifier.current.clear();
+      } catch (e) {}
+      recaptchaVerifier.current = null;
+    }
+    try {
+        recaptchaVerifier.current = new RecaptchaVerifier(auth, containerId, {
+          size: 'invisible',
+        });
+        // Important: pre-render it to ensure it catches errors early and avoids detached DOM
+        recaptchaVerifier.current.render().catch(() => {});
+    } catch (e) {
+        console.error("Recaptcha setup error:", e);
     }
   }, []);
 
@@ -90,6 +100,12 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const clearPhoneAuth = useCallback(() => {
     setConfirmationResult(null);
+    if (recaptchaVerifier.current) {
+      try {
+        recaptchaVerifier.current.clear();
+      } catch (e) {}
+      recaptchaVerifier.current = null;
+    }
   }, []);
   const lastMemberSyncKeyRef = React.useRef<string | null>(null);
 

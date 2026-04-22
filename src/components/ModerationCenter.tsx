@@ -261,6 +261,20 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
     }
   };
 
+
+  const handleSendInviteSms = () => {
+    if (!activeCommunityLink) return;
+    const inviteUrl = `${window.location.origin}?join=${activeCommunityLink.id}`;
+    const communityName = currentCommunity?.name || 'our community';
+    const message = `You've been invited to join ${communityName} on Lalela! Follow this link to join: ${inviteUrl}`;
+    
+    const recipient = inviteEmailRecipient.trim();
+    const isPhone = /^[\d\+\-\s]+$/.test(recipient);
+    
+    const smsUri = `sms:${isPhone ? recipient : ''}?body=${encodeURIComponent(message)}`;
+    window.location.href = smsUri;
+  };
+
   const handleSendInviteEmail = async () => {
     if (!activeCommunityLink) return;
 

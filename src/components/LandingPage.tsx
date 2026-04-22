@@ -29,7 +29,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
-  signOut as firebaseSignOut
+  signOut as firebaseSignOut,
+  sendEmailVerification
 } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -226,6 +227,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
           is_admin: false,
           is_active: true
         });
+
+        // Send email verification
+        try {
+           await sendEmailVerification(userCredential.user);
+        } catch (vErr) {
+           console.error("Failed to send verification email:", vErr);
+        }
 
         // Store contact for any immediate Onboarding steps needing it
         localStorage.setItem('pending_onboarding_name', `${name} ${lastName}`.trim());
