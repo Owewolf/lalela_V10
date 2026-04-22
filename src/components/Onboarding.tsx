@@ -113,6 +113,8 @@ export const Onboarding: React.FC = () => {
   // Load pending data from localStorage
   useEffect(() => {
     const pendingName = localStorage.getItem('pending_onboarding_name');
+    const pendingEmail = localStorage.getItem('pending_onboarding_email');
+    const pendingPhone = localStorage.getItem('pending_onboarding_phone');
     const pendingContact = localStorage.getItem('pending_onboarding_contact');
     const pendingMode = localStorage.getItem('pending_onboarding_mode') as 'join' | 'start';
     const pendingInvite = localStorage.getItem('pending_onboarding_invite');
@@ -137,7 +139,20 @@ export const Onboarding: React.FC = () => {
     }
 
     if (pendingName) setFullName(pendingName);
-    if (pendingContact) setEmail(pendingContact);
+    if (pendingEmail) {
+      setEmail(pendingEmail);
+    }
+    if (pendingPhone) {
+      setPhone(pendingPhone);
+    }
+    if (!pendingEmail && !pendingPhone && pendingContact) {
+      // Route contact to the correct field — phone numbers go to phone state, not email
+      if (pendingContact.includes('@')) {
+        setEmail(pendingContact);
+      } else {
+        setPhone(pendingContact);
+      }
+    }
 
     if (pendingInvite) {
       if (pendingMode === 'join') setInviteCode(pendingInvite);
@@ -226,7 +241,16 @@ export const Onboarding: React.FC = () => {
 
     try {
       const resolvedName = fullName || user.displayName || 'Anonymous';
-      const resolvedEmail = email || user.email || '';
+      const parsedNameParts = resolvedName.trim().split(/\s+/).filter(Boolean);
+      const resolvedFirstName = parsedNameParts[0] || resolvedName;
+      const resolvedLastName = parsedNameParts.length > 1 ? parsedNameParts.slice(1).join(' ') : '';
+      const typedEmail = (email || '').trim().toLowerCase();
+      const authEmail = (user.email || '').trim().toLowerCase();
+      const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      const resolvedEmail = emailPattern.test(typedEmail)
+        ? typedEmail
+        : (emailPattern.test(authEmail) ? authEmail : '');
+      const resolvedPhone = (phone || '').trim();
       const resolvedImage = profileImage || user.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(resolvedName)}`;
       const { getDocs, collection, query, where, getDoc } = await import('firebase/firestore');
 
@@ -234,8 +258,11 @@ export const Onboarding: React.FC = () => {
       const profileData: Record<string, any> = {
         id: user.uid,
         name: resolvedName,
+        first_name: resolvedFirstName,
+        last_name: resolvedLastName,
         email: resolvedEmail,
-        phone: phone,
+        phone: resolvedPhone,
+        mobile_number: resolvedPhone,
         address: locationName,
         profile_image: resolvedImage,
         license_status: 'UNLICENSED',
@@ -244,7 +271,7 @@ export const Onboarding: React.FC = () => {
         profile_completed: true,
         community_created: mode === 'start',
         defaultLocation: { name: locationName, latitude: locationLat, longitude: locationLng },
-        created_at: serverTimestamp()
+        updated_at: serverTimestamp()
       };
 
       if (mode === 'start') {
@@ -274,46 +301,71 @@ export const Onboarding: React.FC = () => {
         }
 
         if (snapshot && !snapshot.empty) {
-          throw new Error('You already have a trial community. Please license it to create another.');
-        }
+          const existingCommunity = snapshot.docs[0].data() as Record<string, any>;
+          const existingCommunityId = typeof existingCommunity.id === 'string' && existingCommunity.id.length > 0
+            ? existingCommunity.id
+            : snapshot.docs[0].id;
+          selectedCommunityId = existingCommunityId;
 
-        const communityId = `comm_${Math.random().toString(36).substr(2, 9)}`;
-        const trialEndDate = new Date();
-        trialEndDate.setDate(trialEndDate.getDate() + 30);
-        selectedCommunityId = communityId;
+          // Ensure owner membership exists so subsequent app logic treats this user as the active admin.
+          const trialEndDate = existingCommunity.trial_end_date instanceof Timestamp
+            ? existingCommunity.trial_end_date.toDate()
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-        // Create Community
-        try {
-          await setDoc(doc(db, 'communities', communityId), {
-            id: communityId,
-            name: communityName,
-            owner_id: user.uid,
-            type: 'TRIAL',
-            trial_end_date: Timestamp.fromDate(trialEndDate),
-            status: 'ACTIVE',
-            onboarding_steps_completed: [],
-            guided_setup_required: true,
-            createdAt: serverTimestamp()
-          });
-        } catch (err) {
-          handleFirestoreError(err, OperationType.WRITE, `communities/${communityId}`, user);
-        }
+          try {
+            await setDoc(doc(db, 'communities', existingCommunityId, 'members', user.uid), {
+              user_id: user.uid,
+              community_id: existingCommunityId,
+              role: 'ADMIN',
+              joined_at: serverTimestamp(),
+              license_expiry: Timestamp.fromDate(trialEndDate),
+              status: 'ACTIVE',
+              name: resolvedName,
+              image: resolvedImage,
+              email: resolvedEmail
+            }, { merge: true });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, `communities/${existingCommunityId}/members/${user.uid}`, user);
+          }
+        } else {
+          const communityId = `comm_${Math.random().toString(36).substr(2, 9)}`;
+          const trialEndDate = new Date();
+          trialEndDate.setDate(trialEndDate.getDate() + 30);
+          selectedCommunityId = communityId;
 
-        // Create Membership (Admin)
-        try {
-          await setDoc(doc(db, 'communities', communityId, 'members', user.uid), {
-            user_id: user.uid,
-            community_id: communityId,
-            role: 'ADMIN',
-            joined_at: serverTimestamp(),
-            license_expiry: Timestamp.fromDate(trialEndDate),
-            status: 'ACTIVE',
-            name: resolvedName,
-            image: resolvedImage,
-            email: resolvedEmail
-          });
-        } catch (err) {
-          handleFirestoreError(err, OperationType.WRITE, `communities/${communityId}/members/${user.uid}`, user);
+          // Create Community
+          try {
+            await setDoc(doc(db, 'communities', communityId), {
+              id: communityId,
+              name: communityName,
+              owner_id: user.uid,
+              type: 'TRIAL',
+              trial_end_date: Timestamp.fromDate(trialEndDate),
+              status: 'ACTIVE',
+              onboarding_steps_completed: [],
+              guided_setup_required: true,
+              createdAt: serverTimestamp()
+            });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, `communities/${communityId}`, user);
+          }
+
+          // Create Membership (Admin)
+          try {
+            await setDoc(doc(db, 'communities', communityId, 'members', user.uid), {
+              user_id: user.uid,
+              community_id: communityId,
+              role: 'ADMIN',
+              joined_at: serverTimestamp(),
+              license_expiry: Timestamp.fromDate(trialEndDate),
+              status: 'ACTIVE',
+              name: resolvedName,
+              image: resolvedImage,
+              email: resolvedEmail
+            });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, `communities/${communityId}/members/${user.uid}`, user);
+          }
         }
       } else {
         // JOIN MODE — try invite link first, then fall back to community ID
@@ -382,8 +434,18 @@ export const Onboarding: React.FC = () => {
       const userDocRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userDocRef);
 
+      if (userSnap.exists()) {
+        const existingData = userSnap.data() as Record<string, any>;
+        const existingEmail = typeof existingData.email === 'string' ? existingData.email : undefined;
+        if (existingEmail !== undefined) {
+          // Keep immutable email aligned with existing profile value unless auth email is already verified.
+          profileData.email = existingEmail || resolvedEmail;
+        }
+      }
+
       if (!userSnap.exists()) {
         try {
+          profileData.created_at = serverTimestamp();
           await setDoc(userDocRef, profileData);
         } catch (err) {
           handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`, user);
@@ -398,6 +460,8 @@ export const Onboarding: React.FC = () => {
 
       // Clear localStorage
       localStorage.removeItem('pending_onboarding_name');
+      localStorage.removeItem('pending_onboarding_email');
+      localStorage.removeItem('pending_onboarding_phone');
       localStorage.removeItem('pending_onboarding_contact');
       localStorage.removeItem('pending_onboarding_mode');
       localStorage.removeItem('pending_onboarding_invite');

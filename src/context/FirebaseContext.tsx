@@ -62,8 +62,12 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const recaptchaVerifier = React.useRef<RecaptchaVerifier | null>(null);
+  const disableRecaptchaForTesting = String(import.meta.env.VITE_DISABLE_RECAPTCHA_FOR_TESTING ?? '').toLowerCase() === 'true';
 
   const setupRecaptcha = useCallback((containerId: string) => {
+    // Firebase phone auth test mode disables actual app verification challenges.
+    auth.settings.appVerificationDisabledForTesting = disableRecaptchaForTesting;
+
     if (recaptchaVerifier.current) {
       try {
         recaptchaVerifier.current.clear();
@@ -79,7 +83,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (e) {
         console.error("Recaptcha setup error:", e);
     }
-  }, []);
+  }, [disableRecaptchaForTesting]);
 
   const signInWithPhone = useCallback(async (phoneNumber: string) => {
     if (!recaptchaVerifier.current) {
@@ -143,7 +147,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (user && userProfile) {
       const syncPublicProfile = async () => {
         const publicDocRef = doc(db, 'users_public', user.uid);
-        const searchDocRef = doc(db, 'user_search', (user.email || '').toLowerCase());
+        const normalizedEmail = user.email?.toLowerCase().trim() || null;
         try {
           const publicDoc = await getDoc(publicDocRef);
           if (!publicDoc.exists() || 
@@ -156,11 +160,12 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }, { merge: true });
           }
 
-          if (user.email) {
+          if (normalizedEmail) {
+            const searchDocRef = doc(db, 'user_search', normalizedEmail);
             await setDoc(searchDocRef, {
               uid: user.uid,
               name: userProfile.name,
-              email: user.email
+              email: normalizedEmail
             }, { merge: true });
           }
         } catch (err) {

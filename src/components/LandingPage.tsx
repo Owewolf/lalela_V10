@@ -126,16 +126,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
       const docSnap = await getDoc(userDocRef);
       
       const inviteJoinCode = localStorage.getItem('pending_join_code');
+      const resolvedPhone = user.phoneNumber || mobileNumber;
+      const resolvedName = `${name} ${lastName}`.trim() || user.displayName || 'Phone User';
+      const resolvedFirstName = name.trim() || resolvedName.split(' ')[0] || 'Phone';
+      const resolvedLastName = lastName.trim() || '';
       
       if (!docSnap.exists() && joinMode === 'start') {
         const profileData = {
           id: user.uid,
-          name: `${name} ${lastName}`.trim(),
-          first_name: name,
-          last_name: lastName,
+          name: resolvedName,
+          first_name: resolvedFirstName,
+          last_name: resolvedLastName,
           email: '',
-          mobile_number: user.phoneNumber || mobileNumber,
-          phone: user.phoneNumber || mobileNumber,
+          mobile_number: resolvedPhone,
+          phone: resolvedPhone,
           agreed_to_terms: agreedToTerms,
           marketing_consent: marketingConsent,
           email_verified: false,
@@ -148,9 +152,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
           is_active: true
         };
         await setDoc(userDocRef, profileData);
-        
-        localStorage.setItem('pending_onboarding_name', `${name} ${lastName}`.trim());
-        localStorage.setItem('pending_onboarding_contact', user.phoneNumber || mobileNumber);
+      }
+
+      if (joinMode === 'start') {
+        localStorage.setItem('pending_onboarding_name', resolvedName);
+        localStorage.setItem('pending_onboarding_phone', resolvedPhone);
+        localStorage.removeItem('pending_onboarding_email');
+        // Backward-compat fallback for older onboarding reads.
+        localStorage.setItem('pending_onboarding_contact', resolvedPhone);
         localStorage.setItem('pending_onboarding_mode', inviteJoinCode ? 'join' : 'start');
       }
     } catch (err: any) {
@@ -269,6 +278,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
           }
 
           localStorage.setItem('pending_onboarding_name', `${name} ${lastName}`.trim());
+          localStorage.setItem('pending_onboarding_email', email);
+          localStorage.removeItem('pending_onboarding_phone');
           localStorage.setItem('pending_onboarding_contact', email);
           localStorage.setItem('pending_onboarding_mode', inviteJoinCode ? 'join' : 'start');
         }

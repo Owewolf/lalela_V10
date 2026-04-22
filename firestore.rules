@@ -479,12 +479,14 @@ service cloud.firestore {
       allow get: if isAuthenticated();
       allow list: if isAuthenticated();
       allow create: if isHardcodedAdmin() || isAdmin() || (isOwner(userId) && 
-                      !exists(/databases/$(database)/documents/blacklisted_emails/$(request.auth.token.email)) &&
                       isValidUser(request.resource.data) && 
-                      (!('role' in request.resource.data) || request.resource.data.role == 'user'));
+                      (!('role' in request.resource.data) || request.resource.data.role == 'user') &&
+                      (request.resource.data.email == '' || !exists(/databases/$(database)/documents/blacklisted_emails/$(request.resource.data.email))));
       allow update: if isHardcodedAdmin() || isAdmin() || (isOwner(userId) && isValidUser(request.resource.data) &&
                       request.resource.data.id == resource.data.id &&
-                      (request.resource.data.email == resource.data.email || ('deleted' in request.resource.data && request.resource.data.deleted == true)) &&
+                      (request.resource.data.email == resource.data.email ||
+                       (!('email' in resource.data) && request.resource.data.email == '') ||
+                       ('deleted' in request.resource.data && request.resource.data.deleted == true)) &&
                       (!('role' in request.resource.data) || request.resource.data.role == resource.data.role));
       
       match /notifications/{notificationId} {
