@@ -17,20 +17,22 @@ import {
   HandHeart,
   Zap,
   ChevronRight,
-  X
+  X,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LandingPageMap } from './landing/LandingPageMap';
 import { 
   signInWithPopup, 
   GoogleAuthProvider,
-  sendSignInLinkToEmail,
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut as firebaseSignOut
 } from 'firebase/auth';
 import { auth, db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { APP_LOGO_PATH } from '../constants';
 import { cn } from '../lib/utils';
 
@@ -44,7 +46,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
   const [joinMode, setJoinMode] = useState<'start' | 'login'>('start');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('+27');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailLinkSent, setEmailLinkSent] = useState(false);
@@ -135,25 +145,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
         // Direct password sign-in for existing users
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        // Email link flow for new sign-ups
+        // Validation
+        if (password !== confirmPassword) {
+          throw new Error("Passwords do not match.");
+        }
+        if (!agreedToTerms) {
+          throw new Error("You must agree to the Terms & Conditions.");
+        }
+        if (password.length < 6) {
+          throw new Error("Password must be at least 6 characters.");
+        }
+
+        // Unified Registration
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const inviteJoinCode = localStorage.getItem('pending_join_code');
-        const actionCodeSettings = {
-          url: window.location.origin,
-          handleCodeInApp: true,
-        };
 
-        await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+        // Create the user document immediately
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          first_name: name,
+          last_name: lastName,
+          email: email,
+          mobile_number: mobileNumber,
+          agreed_to_terms: agreedToTerms,
+          marketing_consent: marketingConsent,
+          email_verified: false,
+          created_at: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          is_admin: false,
+          is_active: true
+        });
 
-        // Save email for completion on the same device
-        localStorage.setItem('emailForSignIn', email);
-
-        // Store name for Onboarding to pick up
-        localStorage.setItem('pending_onboarding_name', name);
+        // Store contact for any immediate Onboarding steps needing it
+        localStorage.setItem('pending_onboarding_name', `${name} ${lastName}`.trim());
         localStorage.setItem('pending_onboarding_contact', email);
         localStorage.setItem('pending_onboarding_mode', inviteJoinCode ? 'join' : 'start');
-
-        setEmailLinkSent(true);
-        startResendCooldown();
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
@@ -577,20 +602,47 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
               ) : (
               <form onSubmit={handleEmailLogin} className="space-y-6">
                 {joinMode === 'start' && (
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Your Name</label>
-                    <input 
-                      type="text" 
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. John Doe"
-                      required
-                      className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
-                    />
-                  </div>
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">First Name *</label>
+                        <input 
+                          type="text" 
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="e.g. Sipho"
+                          required
+                          className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Last Name *</label>
+                        <input 
+                          type="text" 
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          placeholder="e.g. Ndlovu"
+                          required
+                          className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Mobile Number *</label>
+                      <input 
+                        type="tel" 
+                        value={mobileNumber}
+                        onChange={(e) => setMobileNumber(e.target.value)}
+                        placeholder="+27..."
+                        required
+                        className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                      />
+                    </div>
+                  </>
                 )}
+
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Email Address</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Email Address {joinMode === 'start' ? '*' : ''}</label>
                   <input 
                     type="email" 
                     value={email}
@@ -601,25 +653,91 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                   />
                 </div>
 
-                {joinMode === 'login' && (
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Password</label>
+                <div className="space-y-2 relative">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Password {joinMode === 'start' ? '*' : ''}</label>
+                  <div className="relative">
                     <input 
-                      type="password" 
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
                       required
-                      className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                      className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold pr-12"
                     />
                     <button
                       type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {joinMode === 'login' && (
+                    <button
+                      type="button"
                       onClick={() => { setShowForgotPassword(true); setForgotEmail(email); setForgotSent(false); setForgotError(null); }}
-                      className="text-xs font-bold text-primary hover:text-secondary transition-colors ml-2"
+                      className="text-xs font-bold text-primary hover:text-secondary transition-colors ml-2 mt-2 block"
                     >
                       Forgot password?
                     </button>
-                  </div>
+                  )}
+                </div>
+
+                {joinMode === 'start' && (
+                  <>
+                    <div className="space-y-2 relative">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Confirm Password *</label>
+                      <div className="relative">
+                        <input 
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Re-enter your password"
+                          required
+                          className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold pr-12"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors"
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      <label className="flex items-start gap-3 cursor-pointer group">
+                        <div className="relative flex items-center justify-center mt-0.5">
+                          <input 
+                            type="checkbox" 
+                            checked={agreedToTerms}
+                            onChange={(e) => setAgreedToTerms(e.target.checked)}
+                            required
+                            className="w-5 h-5 appearance-none rounded-lg border-2 border-outline-variant/30 checked:border-primary checked:bg-primary transition-all cursor-pointer peer"
+                          />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-white absolute opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
+                        </div>
+                        <span className="text-xs font-medium text-on-surface-variant leading-relaxed">
+                          I agree to the <a href="#" className="font-bold text-primary hover:underline">Terms & Conditions</a> and <a href="#" className="font-bold text-primary hover:underline">Privacy Policy</a> *
+                        </span>
+                      </label>
+                      <label className="flex items-start gap-3 cursor-pointer group">
+                        <div className="relative flex items-center justify-center mt-0.5">
+                          <input 
+                            type="checkbox" 
+                            checked={marketingConsent}
+                            onChange={(e) => setMarketingConsent(e.target.checked)}
+                            className="w-5 h-5 appearance-none rounded-lg border-2 border-outline-variant/30 checked:border-primary checked:bg-primary transition-all cursor-pointer peer"
+                          />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-white absolute opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
+                        </div>
+                        <span className="text-xs font-medium text-on-surface-variant leading-relaxed">
+                          I'd like to receive community updates and promotional emails
+                        </span>
+                      </label>
+                    </div>
+                  </>
                 )}
                 
                 <button 
@@ -627,7 +745,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                   disabled={isSubmitting}
                   className="w-full py-5 bg-secondary text-white rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                 >
-                  {isSubmitting ? (joinMode === 'login' ? 'Signing In...' : 'Sending...') : joinMode === 'start' ? 'Create Account' : 'Sign In'}
+                  {isSubmitting ? (joinMode === 'login' ? 'Signing In...' : 'Creating Account...') : joinMode === 'start' ? 'Create Account' : 'Sign In'}
                 </button>
 
                 {error && (

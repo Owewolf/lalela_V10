@@ -168,10 +168,15 @@ export interface ChatRoom {
 export interface UserProfile {
   id: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   phone?: string;
+  mobile_number?: string;
   address?: string;
   profile_image?: string;
+  agreed_to_terms?: boolean;
+  marketing_consent?: boolean;
   license_status: 'UNLICENSED' | 'LICENSED';
   status: 'ACTIVE' | 'READ-ONLY';
   two_factor_enabled?: boolean;

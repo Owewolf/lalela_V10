@@ -40,15 +40,6 @@ const PageLoader = () => (
 
 function AppContent() {
   const { user, userProfile, loading } = useFirebase();
-  const [emailLinkPrompt, setEmailLinkPrompt] = useState(false);
-  const [emailLinkInput, setEmailLinkInput] = useState('');
-  const [emailLinkError, setEmailLinkError] = useState<string | null>(null);
-  const [emailLinkProcessing, setEmailLinkProcessing] = useState(false);
-  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
-  const [setupPassword, setSetupPassword] = useState('');
-  const [setupPasswordConfirm, setSetupPasswordConfirm] = useState('');
-  const [setupPasswordError, setSetupPasswordError] = useState<string | null>(null);
-  const [setupPasswordLoading, setSetupPasswordLoading] = useState(false);
   const { currentCommunity, communities, startConversation, setActiveConversation, conversations, members, joinViaInviteLink, setCurrentCommunity } = useCommunity();
   const [activeTab, setActiveTab] = useState('home');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -80,19 +71,6 @@ function AppContent() {
     }
   }, []);
 
-  const getPendingEmailLink = useCallback(() => {
-    const currentHref = window.location.href;
-    if (isSignInWithEmailLink(auth, currentHref)) {
-      sessionStorage.setItem('pendingEmailSignInLink', currentHref);
-      return currentHref;
-    }
-
-    return sessionStorage.getItem('pendingEmailSignInLink');
-  }, []);
-
-  const clearPendingEmailLink = useCallback(() => {
-    sessionStorage.removeItem('pendingEmailSignInLink');
-  }, []);
 
   const stashPendingInviteJoin = useCallback((joinCode: string) => {
     localStorage.setItem('pending_join_code', joinCode);
@@ -163,86 +141,8 @@ function AppContent() {
       });
   }, [joinViaInviteLink, setCurrentCommunity, stashPendingInviteJoin, user, userProfile]);
 
-  // Handle email link sign-in completion
-  useEffect(() => {
-    const emailLink = getPendingEmailLink();
-    if (!emailLink) return;
 
-    const storedEmail = localStorage.getItem('emailForSignIn');
-    if (storedEmail) {
-      // Same device — complete sign-in automatically
-      setEmailLinkProcessing(true);
-      signInWithEmailLink(auth, storedEmail, emailLink)
-        .then(() => {
-          localStorage.removeItem('emailForSignIn');
-          clearPendingEmailLink();
-          window.history.replaceState(null, '', window.location.origin + window.location.pathname);
-          setNeedsPasswordSetup(true);
-        })
-        .catch((err) => {
-          console.error('Email link sign-in error:', err);
-          if (err.code === 'auth/email-already-in-use') {
-            localStorage.removeItem('emailForSignIn');
-          }
-          setEmailLinkInput(storedEmail);
-          setEmailLinkPrompt(true);
-          setEmailLinkError(getEmailLinkErrorMessage(err));
-        })
-        .finally(() => setEmailLinkProcessing(false));
-    } else {
-      // Cross-device — ask for email
-      setEmailLinkPrompt(true);
-    }
-  }, [clearPendingEmailLink, getPendingEmailLink]);
 
-  const completeEmailLinkSignIn = async () => {
-    if (!emailLinkInput) return;
-
-    const emailLink = getPendingEmailLink();
-    if (!emailLink) {
-      setEmailLinkError('No valid email sign-in link is available in this browser. Open the newest email link again to continue.');
-      return;
-    }
-
-    setEmailLinkProcessing(true);
-    setEmailLinkError(null);
-    try {
-      await signInWithEmailLink(auth, emailLinkInput, emailLink);
-      localStorage.removeItem('emailForSignIn');
-      clearPendingEmailLink();
-      setEmailLinkPrompt(false);
-      window.history.replaceState(null, '', window.location.origin + window.location.pathname);
-      setNeedsPasswordSetup(true);
-    } catch (err: any) {
-      console.error('Email link sign-in error:', err);
-      setEmailLinkError(getEmailLinkErrorMessage(err));
-    } finally {
-      setEmailLinkProcessing(false);
-    }
-  };
-
-  const handleSetPassword = async () => {
-    setSetupPasswordError(null);
-    if (setupPassword.length < 6) {
-      setSetupPasswordError('Password must be at least 6 characters.');
-      return;
-    }
-    if (setupPassword !== setupPasswordConfirm) {
-      setSetupPasswordError('Passwords do not match.');
-      return;
-    }
-    if (!auth.currentUser) return;
-    setSetupPasswordLoading(true);
-    try {
-      await updatePassword(auth.currentUser, setupPassword);
-      setNeedsPasswordSetup(false);
-    } catch (err: any) {
-      console.error('Set password error:', err);
-      setSetupPasswordError(err.message);
-    } finally {
-      setSetupPasswordLoading(false);
-    }
-  };
 
   // Track unread indicator for chat nav button
   const totalUnread = useMemo(() => {
@@ -412,7 +312,7 @@ function AppContent() {
     }
   };
 
-  if (loading || emailLinkProcessing) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -421,55 +321,6 @@ function AppContent() {
   }
 
   // Cross-device email link prompt
-  if (emailLinkPrompt) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center px-6">
-        <div className="bg-white p-10 rounded-3xl shadow-2xl border border-outline-variant/10 max-w-md w-full space-y-6">
-          <div className="text-center space-y-3">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-              <Mail className="w-7 h-7 text-primary" />
-            </div>
-            <h2 className="text-2xl font-headline font-black text-primary">Complete Sign-In</h2>
-            <p className="text-sm text-on-surface-variant font-medium">
-              Enter the email address you used to request the sign-in link.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Email Address</label>
-            <input
-              type="email"
-              value={emailLinkInput}
-              onChange={(e) => setEmailLinkInput(e.target.value)}
-              placeholder="your@email.com"
-              required
-              className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
-            />
-          </div>
-          {emailLinkError && (
-            <p className="text-xs text-error font-medium bg-error/5 p-4 rounded-2xl border border-error/10 text-center">
-              {emailLinkError}
-            </p>
-          )}
-          <button
-            onClick={completeEmailLinkSignIn}
-            disabled={emailLinkProcessing || !emailLinkInput}
-            className="w-full py-5 bg-secondary text-white rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-          >
-            {emailLinkProcessing ? 'Signing in...' : 'Sign In'}
-          </button>
-          <button
-            onClick={() => {
-              setEmailLinkPrompt(false);
-              window.history.replaceState(null, '', window.location.origin + window.location.pathname);
-            }}
-            className="w-full text-sm font-bold text-outline hover:text-primary transition-colors text-center"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (!user) {
     if (showBenefitsPricing) {
@@ -493,63 +344,6 @@ function AppContent() {
           onViewBenefits={() => setShowBenefitsPricing(true)}
         />
       </Suspense>
-    );
-  }
-
-  // Password setup screen after email link sign-in.
-  // New users should set a password before continuing into onboarding.
-  if (needsPasswordSetup && user) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center px-6">
-        <div className="bg-white p-10 rounded-3xl shadow-2xl border border-outline-variant/10 max-w-md w-full space-y-6">
-          <div className="text-center space-y-3">
-            <img
-              src={APP_LOGO_PATH}
-              alt="Lalela logo"
-              className="w-14 h-14 rounded-2xl object-cover mx-auto shadow-lg shadow-primary/20"
-              referrerPolicy="no-referrer"
-            />
-            <h2 className="text-2xl font-headline font-black text-primary">Set Your Password</h2>
-            <p className="text-sm text-on-surface-variant font-medium">
-              Create a password so you can sign in easily next time.
-            </p>
-          </div>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Password</label>
-              <input
-                type="password"
-                value={setupPassword}
-                onChange={(e) => setSetupPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Confirm Password</label>
-              <input
-                type="password"
-                value={setupPasswordConfirm}
-                onChange={(e) => setSetupPasswordConfirm(e.target.value)}
-                placeholder="Re-enter your password"
-                className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
-              />
-            </div>
-          </div>
-          {setupPasswordError && (
-            <p className="text-xs text-error font-medium bg-error/5 p-4 rounded-2xl border border-error/10 text-center">
-              {setupPasswordError}
-            </p>
-          )}
-          <button
-            onClick={handleSetPassword}
-            disabled={setupPasswordLoading || !setupPassword || !setupPasswordConfirm}
-            className="w-full py-5 bg-secondary text-white rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-          >
-            {setupPasswordLoading ? 'Setting Password...' : 'Set Password'}
-          </button>
-        </div>
-      </div>
     );
   }
 
