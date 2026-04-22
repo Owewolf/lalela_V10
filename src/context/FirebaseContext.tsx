@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { onAuthStateChanged, User, signOut as firebaseSignOut , RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, Timestamp, serverTimestamp, collectionGroup, getDocs, query, where, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { UserProfile } from '../types';
@@ -45,6 +45,12 @@ interface FirebaseContextType {
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+
+  confirmationResult: ConfirmationResult | null;
+  setupRecaptcha: (containerId: string) => void;
+  signInWithPhone: (phoneNumber: string) => Promise<void>;
+  verifySmsCode: (code: string) => Promise<any>;
+  clearPhoneAuth: () => void;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
@@ -54,6 +60,37 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const recaptchaVerifier = React.useRef<RecaptchaVerifier | null>(null);
+
+  const setupRecaptcha = useCallback((containerId: string) => {
+    if (!recaptchaVerifier.current) {
+      recaptchaVerifier.current = new RecaptchaVerifier(auth, containerId, {
+        size: 'invisible',
+      });
+    }
+  }, []);
+
+  const signInWithPhone = useCallback(async (phoneNumber: string) => {
+    if (!recaptchaVerifier.current) {
+      throw new Error('reCAPTCHA not initialized');
+    }
+    const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier.current);
+    setConfirmationResult(result);
+  }, []);
+
+  const verifySmsCode = useCallback(async (code: string) => {
+    if (!confirmationResult) {
+      throw new Error('No SMS verification in progress');
+    }
+    const result = await confirmationResult.confirm(code);
+    setConfirmationResult(null);
+    return result;
+  }, [confirmationResult]);
+
+  const clearPhoneAuth = useCallback(() => {
+    setConfirmationResult(null);
+  }, []);
   const lastMemberSyncKeyRef = React.useRef<string | null>(null);
 
   const syncMembershipLocation = async (payload: Pick<Partial<UserProfile>, 'defaultLocation' | 'locationSharingEnabled'>) => {
@@ -242,7 +279,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   return (
-    <FirebaseContext.Provider value={{ user, userProfile, loading, isAuthReady, updateUserProfile, signOut, deleteAccount }}>
+    <FirebaseContext.Provider value={{ user, userProfile, loading, isAuthReady, updateUserProfile, signOut, deleteAccount , confirmationResult, setupRecaptcha, signInWithPhone, verifySmsCode, clearPhoneAuth }}>
       {children}
     </FirebaseContext.Provider>
   );

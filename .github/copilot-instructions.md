@@ -197,6 +197,13 @@ This section defines the approved technology stack and conventions for the LaLel
 * **Email (dev/server):** Nodemailer via `src/server/api.ts`
 * **Email (production/deploy):** PHPMailer inside `/deploy/PHPMailer/`
 
+#### **Authentication & Onboarding Flow**
+
+* **Primary Auth Pattern:** Unified registration form (Email/Password) on the `LandingPage`. **Do NOT use passwordless email links** (`sendSignInLinkToEmail`).
+* **Google Auth:** Supported via `signInWithPopup`.
+* **Account Creation:** User Firestore documents (`/users/{uid}`) must be created *immediately* upon registration on the `LandingPage`, capturing `first_name`, `last_name`, `mobile_number`, and `agreed_to_terms`.
+* **Invite Links (`?join=`):** Invite tokens are cached via `localStorage` (`pending_join_code` and `pending_onboarding_mode`). After users authenticate on the `LandingPage`, they are passed to `Onboarding.tsx`, which auto-populates the read-only community fields and completes the join.
+
 #### **Firebase & Firestore**
 
 * **SDK:** Firebase v12+ (modular SDK) — always use named imports, never the compat API

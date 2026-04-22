@@ -186,7 +186,7 @@ service cloud.firestore {
     function isValidUser(data) {
       let requiredFields = ['id', 'name', 'email', 'license_status', 'status'];
       let allowedFields = [
-        'id', 'name', 'email', 'phone', 'address', 'license_status', 'status', 'role', 
+        'id', 'name', 'email', 'phone', 'address', 'license_status', 'status', 'role', 'first_name', 'last_name', 'mobile_number', 'agreed_to_terms', 'marketing_consent', 'email_verified', 'is_admin', 'is_active', 'updated_at', 
         'profile_image', 'two_factor_enabled', 'two_factor_method', 'login_alerts_enabled', 
         'profile_visibility', 'pii_visibility', 'last_password_changed', 'security_score', 
         'access_type', 'expiry_date', 'created_at', 'deleted', 'deleted_at',

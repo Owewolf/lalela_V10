@@ -34,6 +34,7 @@ import {
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { APP_LOGO_PATH } from '../constants';
+import { PhoneAuth } from './auth/PhoneAuth';
 import { cn } from '../lib/utils';
 
 interface LandingPageProps {
@@ -44,6 +45,8 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onViewBenefits }) => {
   const [joinMode, setJoinMode] = useState<'start' | 'login'>('start');
+  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
+  const [showPhoneStep, setShowPhoneStep] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -65,7 +68,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
   const [forgotError, setForgotError] = useState<string | null>(null);
   const [forgotSubmitting, setForgotSubmitting] = useState(false);
 
+  const handleAuthToggle = (method: 'email' | 'phone') => { setAuthMethod(method); setShowPhoneStep(false); };
   const scrollToJoin = (mode: 'start' | 'login') => {
+    setShowPhoneStep(false);
     setJoinMode(mode);
     const element = document.getElementById('join');
     element?.scrollIntoView({ behavior: 'smooth' });
@@ -92,6 +97,47 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
       setError(err.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  
+  const handlePhoneSuccess = async (user: any) => {
+    try {
+      // Create user document immediately upon registration on LandingPage
+      const userDocRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(userDocRef);
+      
+      const inviteJoinCode = localStorage.getItem('pending_join_code');
+      
+      if (!docSnap.exists() && joinMode === 'start') {
+        const profileData = {
+          id: user.uid,
+          name: `${name} ${lastName}`.trim(),
+          first_name: name,
+          last_name: lastName,
+          email: email,
+          mobile_number: user.phoneNumber || '',
+          phone: user.phoneNumber || '',
+          agreed_to_terms: agreedToTerms,
+          marketing_consent: marketingConsent,
+          email_verified: false,
+          license_status: 'UNLICENSED',
+          status: 'ACTIVE',
+          role: 'user',
+          created_at: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          is_admin: false,
+          is_active: true
+        };
+        await setDoc(userDocRef, profileData);
+        
+        localStorage.setItem('pending_onboarding_name', `${name} ${lastName}`.trim());
+        if (email) localStorage.setItem('pending_onboarding_contact', email);
+        localStorage.setItem('pending_onboarding_mode', inviteJoinCode ? 'join' : 'start');
+      }
+    } catch (err: any) {
+      console.error("Phone auth profile creation error:", err);
+      setError(err.message);
     }
   };
 
@@ -162,13 +208,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
 
         // Create the user document immediately
         await setDoc(doc(db, 'users', userCredential.user.uid), {
+          id: userCredential.user.uid,
+          name: `${name} ${lastName}`.trim(),
           first_name: name,
           last_name: lastName,
           email: email,
           mobile_number: mobileNumber,
+          phone: mobileNumber,
           agreed_to_terms: agreedToTerms,
           marketing_consent: marketingConsent,
           email_verified: false,
+          license_status: 'UNLICENSED',
+          status: 'ACTIVE',
+          role: 'user',
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
           is_admin: false,
@@ -537,7 +589,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
             <div className="bg-white p-12 rounded-[4rem] shadow-2xl border border-outline-variant/10 space-y-10">
               <div className="flex p-2 bg-surface-container-low rounded-3xl">
                 <button 
-                  onClick={() => setJoinMode('start')}
+                  onClick={() => { setJoinMode('start'); setShowPhoneStep(false); }}
                   className={cn(
                     "flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all",
                     joinMode === 'start' ? "bg-white text-primary shadow-lg" : "text-outline hover:text-primary"
@@ -546,7 +598,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                   Start
                 </button>
                 <button 
-                  onClick={() => setJoinMode('login')}
+                  onClick={() => { setJoinMode('login'); setShowPhoneStep(false); }}
                   className={cn(
                     "flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all",
                     joinMode === 'login' ? "bg-white text-primary shadow-lg" : "text-outline hover:text-primary"
@@ -566,6 +618,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                     : 'Sign in to access your communities'}
                 </p>
               </div>
+
+
+              <div className="flex p-2 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl mb-6">
+                <button 
+                  onClick={() => handleAuthToggle('email')}
+                  className={cn(
+                    "flex-1 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all",
+                    authMethod === 'email' ? "bg-primary text-white shadow-md shadow-primary/20" : "text-outline hover:text-primary"
+                  )}
+                >
+                  Email
+                </button>
+                <button 
+                  onClick={() => handleAuthToggle('phone')}
+                  className={cn(
+                    "flex-1 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all",
+                    authMethod === 'phone' ? "bg-primary text-white shadow-md shadow-primary/20" : "text-outline hover:text-primary"
+                  )}
+                >
+                  Phone
+                </button>
+              </div>
+
               
               {emailLinkSent ? (
                 <div className="space-y-6 text-center">
