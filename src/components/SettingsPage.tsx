@@ -38,6 +38,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useCommunity } from '../context/CommunityContext';
 import { useFirebase } from '../context/FirebaseContext';
 import { cn } from '../lib/utils';
+import { accountService } from '../services/accountService';
 import { APP_LOGO_ALT_PATH, APP_LOGO_PATH, BUSINESS_CATEGORIES } from '../constants';
 import { Charity, CharityCategory, CharityUrgency, CharityStatus, NotificationPreferences } from '../types';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -1243,10 +1244,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     License your community to remove member limits, enable advanced moderation tools, and start your second community.
                   </p>
                   <button 
-                    onClick={() => licenseCommunity(currentCommunity.id)}
+                    onClick={async () => {
+                      try {
+                        const { url } = await accountService.createCheckoutSession('community', currentCommunity.id);
+                        window.location.href = url;
+                      } catch (error) {
+                        console.error('Failed to initialize checkout:', error);
+                      }
+                    }}
                     className="mt-4 w-full py-2.5 bg-white text-primary rounded-xl text-xs font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                   >
-                    License Now
+                    License Now (R349)
                   </button>
                 </div>
               </div>
@@ -1258,25 +1266,29 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               onClick={async () => {
                 if (isUnlicensedPlatformMember) {
                   try {
-                    await updateUserProfile({ license_status: 'LICENSED', license_type: 'SELF' });
-                    const wantsCommunity = window.confirm("Your personal platform license is now active! Would you also like to create a new community of your own?");
-                    if (wantsCommunity) {
-                      setIsCreatingCommunity(true);
-                    }
+                    const { url } = await accountService.createCheckoutSession('membership');
+                    window.location.href = url;
                   } catch (err) {
-                    console.error('Failed to update license', err);
+                    console.error('Failed to init checkout', err);
                   }
                 } else if (canCreateNewCommunity) {
                   setIsCreatingCommunity(true);
                 } else {
                   const trialCommunity = communities.find(c => c.owner_id === userProfile?.id && c.type === 'TRIAL');
-                  if (trialCommunity) licenseCommunity(trialCommunity.id);
+                  if (trialCommunity) {
+                    try {
+                      const { url } = await accountService.createCheckoutSession('community', trialCommunity.id);
+                      window.location.href = url;
+                    } catch (err) {
+                      console.error('Failed to init checkout', err);
+                    }
+                  }
                 }
               }}
               className="flex-1 py-3 px-4 rounded-xl bg-white text-primary text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
             >
               <Sparkles className="w-4 h-4" />
-              {isUnlicensedPlatformMember ? 'License' : 'Upgrade'}
+              {isUnlicensedPlatformMember ? 'Upgrade Membership (R149)' : (canCreateNewCommunity ? 'Create Community' : 'License Community (R349)')}
             </button>
           </div>
         </div>

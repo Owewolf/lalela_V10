@@ -92,6 +92,35 @@ export const LicensingSection: React.FC<LicensingSectionProps> = ({ onNavigate }
         </div>
       )}
 
+      {(!isOverallLicensed && !isExpiredInvitedMember) && (
+        <div className="p-5 bg-primary/5 border border-primary/20 rounded-3xl flex items-start gap-4">
+          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+            <Star className="w-6 h-6" />
+          </div>
+          <div className="flex-1 flex flex-col gap-3">
+            <div>
+              <h4 className="text-sm font-bold text-primary">Upgrade to Lifetime Membership</h4>
+              <p className="text-xs text-outline mt-1">Secure your access across the platform without worrying about community trial limits. Pay once, belong for life.</p>
+            </div>
+            <div>
+              <button 
+                onClick={async () => {
+                  try {
+                    const { url } = await accountService.createCheckoutSession('membership');
+                    window.location.href = url;
+                  } catch (error) {
+                    console.error('Failed to initialize checkout:', error);
+                  }
+                }}
+                className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all"
+              >
+                Upgrade Membership (R149)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4">
         <label className="text-[10px] font-black text-outline uppercase tracking-widest">Community Status & Roles</label>
         <div className="grid grid-cols-1 gap-4">
@@ -145,7 +174,7 @@ export const LicensingSection: React.FC<LicensingSectionProps> = ({ onNavigate }
                         onClick={() => handleAction(community)}
                         className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
                       >
-                        Upgrade (R349)
+                          License Community (R349)
                       </button>
                     </>
                   ) : (

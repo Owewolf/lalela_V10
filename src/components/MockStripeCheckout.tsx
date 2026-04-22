@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CreditCard, CheckCircle2, Loader2, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useCommunity } from '../context/CommunityContext';
+import { useFirebase } from '../context/FirebaseContext';
 import { accountService } from '../services/accountService';
 
 interface MockStripeCheckoutProps {
@@ -15,6 +16,7 @@ export const MockStripeCheckout: React.FC<MockStripeCheckoutProps> = ({ type, ta
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const { licenseCommunity } = useCommunity();
+  const { updateUserProfile } = useFirebase();
 
   const price = type === 'membership' ? 'R149.00' : 'R349.00';
   const title = type === 'membership' ? 'Lifetime Membership' : 'Community Creation & Leadership';
@@ -28,6 +30,12 @@ export const MockStripeCheckout: React.FC<MockStripeCheckoutProps> = ({ type, ta
     try {
       if (type === 'community' && targetId) {
         await licenseCommunity(targetId);
+      } else if (type === 'membership') {
+        await updateUserProfile({
+          license_type: 'SELF',
+          license_status: 'LICENSED',
+          status: 'ACTIVE'
+        });
       }
       await accountService.simulateSuccessfulPayment(type, targetId);
       setLoading(false);
