@@ -47,7 +47,8 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onViewBenefits }) => {
   const [joinMode, setJoinMode] = useState<'start' | 'login'>('start');
   
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
   const [countryCode, setCountryCode] = useState('+27');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -70,15 +71,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
   const [otpCode, setOtpCode] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   
-  const isPhoneMode = identifier.length > 0 && /^[+\d\s()-]+$/.test(identifier) && !identifier.includes('@');
+  const isPhoneMode = mobileNumber.length > 0;
 
   const getFormattedPhoneNumber = () => {
-    let cleanNumber = identifier.replace(/\D/g, '');
+    let cleanNumber = mobileNumber.replace(/\D/g, '');
     if (cleanNumber.startsWith('0')) {
       cleanNumber = cleanNumber.substring(1);
     }
-    if (identifier.startsWith('+')) {
-      return identifier; 
+    if (mobileNumber.startsWith('+')) {
+      return mobileNumber;
     }
     return `${countryCode}${cleanNumber}`;
   };
@@ -133,8 +134,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
           first_name: name,
           last_name: lastName,
           email: '',
-          mobile_number: user.phoneNumber || identifier,
-          phone: user.phoneNumber || identifier,
+          mobile_number: user.phoneNumber || mobileNumber,
+          phone: user.phoneNumber || mobileNumber,
           agreed_to_terms: agreedToTerms,
           marketing_consent: marketingConsent,
           email_verified: false,
@@ -149,7 +150,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
         await setDoc(userDocRef, profileData);
         
         localStorage.setItem('pending_onboarding_name', `${name} ${lastName}`.trim());
-        localStorage.setItem('pending_onboarding_contact', user.phoneNumber || identifier);
+        localStorage.setItem('pending_onboarding_contact', user.phoneNumber || mobileNumber);
         localStorage.setItem('pending_onboarding_mode', inviteJoinCode ? 'join' : 'start');
       }
     } catch (err: any) {
@@ -216,7 +217,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
         setIsOtpSent(true);
       } else {
         // Email Mode
-        const email = identifier;
         const blacklistDoc = await getDoc(doc(db, 'blacklisted_emails', email));
         if (blacklistDoc.exists()) {
           setError("This account has been permanently deleted and cannot be reused.");
@@ -734,28 +734,57 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Email or Phone Number {joinMode === 'start' ? '*' : ''}</label>
-                    <div className={cn("flex gap-2 transition-all", isPhoneMode && "items-center")}>
-                      {isPhoneMode && (
-                        <select
-                          value={countryCode}
-                          onChange={(e) => setCountryCode(e.target.value)}
-                          className="px-4 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none cursor-pointer"
-                        >
-                          <option value="+27">🇿🇦 +27</option>
-                          <option value="+1">🇺🇸 +1</option>
-                          <option value="+44">🇬🇧 +44</option>
-                          <option value="+91">🇬🇧 +91</option>
-                        </select>
-                      )}
-                      <input 
-                        type="text" 
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="your@email.com or 082 123 4567"
-                        required
-                        className="flex-1 w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none transition-all"
+                  <div className="space-y-2 relative">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Email Address {joinMode === 'start' ? '*' : ''}</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (e.target.value) setMobileNumber('');
+                      }}
+                      placeholder="your@email.com"
+                      required={!isPhoneMode}
+                      disabled={mobileNumber.length > 0}
+                      className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="relative flex items-center">
+                    <div className="flex-1 border-t border-outline/20"></div>
+                    <span className="mx-3 text-[10px] font-black uppercase tracking-widest text-outline/50">or</span>
+                    <div className="flex-1 border-t border-outline/20"></div>
+                  </div>
+
+                  <div className="space-y-2 relative">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Phone Number {joinMode === 'start' ? '*' : ''}</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={countryCode}
+                        onChange={(e) => setCountryCode(e.target.value)}
+                        disabled={email.length > 0}
+                        className="px-4 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <option value="+27">🇿🇦 +27</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+91">🇮🇳 +91</option>
+                        <option value="+254">🇰🇪 +254</option>
+                        <option value="+234">🇳🇬 +234</option>
+                        <option value="+49">🇩🇪 +49</option>
+                        <option value="+33">🇫🇷 +33</option>
+                        <option value="+61">🇦🇺 +61</option>
+                      </select>
+                      <input
+                        type="tel"
+                        value={mobileNumber}
+                        onChange={(e) => {
+                          setMobileNumber(e.target.value);
+                          if (e.target.value) setEmail('');
+                        }}
+                        placeholder="082 123 4567"
+                        disabled={email.length > 0}
+                        className="flex-1 px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -783,7 +812,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                       {joinMode === 'login' && (
                         <button
                           type="button"
-                          onClick={() => { setShowForgotPassword(true); setForgotEmail(identifier); setForgotSent(false); setForgotError(null); }}
+                          onClick={() => { setShowForgotPassword(true); setForgotEmail(email); setForgotSent(false); setForgotError(null); }}
                           className="text-xs font-bold text-primary hover:text-secondary transition-colors ml-2 mt-2 block"
                         >
                           Forgot password?
