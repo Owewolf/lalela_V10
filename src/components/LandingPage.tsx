@@ -33,9 +33,9 @@ import {
   sendEmailVerification
 } from 'firebase/auth';
 import { auth, db } from '../firebase';
+import { useFirebase } from '../context/FirebaseContext';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { APP_LOGO_PATH } from '../constants';
-import { PhoneAuth } from './auth/PhoneAuth';
 import { cn } from '../lib/utils';
 
 interface LandingPageProps {
@@ -46,14 +46,13 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onViewBenefits }) => {
   const [joinMode, setJoinMode] = useState<'start' | 'login'>('start');
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
-  const [showPhoneStep, setShowPhoneStep] = useState(false);
-  const [email, setEmail] = useState('');
+  
+  const [identifier, setIdentifier] = useState('');
+  const [countryCode, setCountryCode] = useState('+27');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('+27');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -61,17 +60,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [emailLinkSent, setEmailLinkSent] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
   const [forgotSubmitting, setForgotSubmitting] = useState(false);
 
-  const handleAuthToggle = (method: 'email' | 'phone') => { setAuthMethod(method); setShowPhoneStep(false); };
+  const { setupRecaptcha, signInWithPhone, verifySmsCode, confirmationResult, clearPhoneAuth } = useFirebase();
+  const [otpCode, setOtpCode] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  
+  const isPhoneMode = identifier.length > 0 && /^[+\d\s()-]+$/.test(identifier) && !identifier.includes('@');
+
+  const getFormattedPhoneNumber = () => {
+    let cleanNumber = identifier.replace(/\D/g, '');
+    if (cleanNumber.startsWith('0')) {
+      cleanNumber = cleanNumber.substring(1);
+    }
+    if (identifier.startsWith('+')) {
+      return identifier; 
+    }
+    return `${countryCode}${cleanNumber}`;
+  };
+
+  // Clean up reCAPTCHA on unmount
+  React.useEffect(() => {
+    setupRecaptcha('recaptcha-container');
+    return () => { clearPhoneAuth(); };
+  }, [setupRecaptcha, clearPhoneAuth]);
+
   const scrollToJoin = (mode: 'start' | 'login') => {
-    setShowPhoneStep(false);
     setJoinMode(mode);
     const element = document.getElementById('join');
     element?.scrollIntoView({ behavior: 'smooth' });
@@ -101,10 +119,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
     }
   };
 
-  
   const handlePhoneSuccess = async (user: any) => {
     try {
-      // Create user document immediately upon registration on LandingPage
       const userDocRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(userDocRef);
       
@@ -116,9 +132,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
           name: `${name} ${lastName}`.trim(),
           first_name: name,
           last_name: lastName,
-          email: email,
-          mobile_number: user.phoneNumber || '',
-          phone: user.phoneNumber || '',
+          email: '',
+          mobile_number: user.phoneNumber || identifier,
+          phone: user.phoneNumber || identifier,
           agreed_to_terms: agreedToTerms,
           marketing_consent: marketingConsent,
           email_verified: false,
@@ -133,7 +149,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
         await setDoc(userDocRef, profileData);
         
         localStorage.setItem('pending_onboarding_name', `${name} ${lastName}`.trim());
-        if (email) localStorage.setItem('pending_onboarding_contact', email);
+        localStorage.setItem('pending_onboarding_contact', user.phoneNumber || identifier);
         localStorage.setItem('pending_onboarding_mode', inviteJoinCode ? 'join' : 'start');
       }
     } catch (err: any) {
@@ -142,14 +158,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
     }
   };
 
-  const startResendCooldown = () => {
-    setResendCooldown(60);
-    const interval = setInterval(() => {
-      setResendCooldown((prev) => {
-        if (prev <= 1) { clearInterval(interval); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const user = await verifySmsCode(otpCode);
+      if (user) {
+        await handlePhoneSuccess(user.user);
+        onStart();
+      } else {
+        throw new Error("Failed to authenticate.");
+      }
+    } catch (err: any) {
+      console.error("OTP verification error:", err);
+      setError(err.message || 'Invalid code');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -175,77 +202,85 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
     }
   };
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
     try {
-      // Check blacklist first
-      const blacklistDoc = await getDoc(doc(db, 'blacklisted_emails', email));
-      if (blacklistDoc.exists()) {
-        setError("This account has been permanently deleted and cannot be reused.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (joinMode === 'login') {
-        // Direct password sign-in for existing users
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        // Validation
-        if (password !== confirmPassword) {
-          throw new Error("Passwords do not match.");
-        }
-        if (!agreedToTerms) {
+      if (isPhoneMode) {
+        if (joinMode === 'start' && !agreedToTerms) {
           throw new Error("You must agree to the Terms & Conditions.");
         }
-        if (password.length < 6) {
-          throw new Error("Password must be at least 6 characters.");
+        const formattedPhone = getFormattedPhoneNumber();
+        await signInWithPhone(formattedPhone);
+        setIsOtpSent(true);
+      } else {
+        // Email Mode
+        const email = identifier;
+        const blacklistDoc = await getDoc(doc(db, 'blacklisted_emails', email));
+        if (blacklistDoc.exists()) {
+          setError("This account has been permanently deleted and cannot be reused.");
+          setIsSubmitting(false);
+          return;
         }
 
-        // Unified Registration
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const inviteJoinCode = localStorage.getItem('pending_join_code');
+        if (joinMode === 'login') {
+          await signInWithEmailAndPassword(auth, email, password);
+        } else {
+          if (password !== confirmPassword) {
+            throw new Error("Passwords do not match.");
+          }
+          if (!agreedToTerms) {
+            throw new Error("You must agree to the Terms & Conditions.");
+          }
+          if (password.length < 6) {
+            throw new Error("Password must be at least 6 characters.");
+          }
 
-        // Create the user document immediately
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-          id: userCredential.user.uid,
-          name: `${name} ${lastName}`.trim(),
-          first_name: name,
-          last_name: lastName,
-          email: email,
-          mobile_number: mobileNumber,
-          phone: mobileNumber,
-          agreed_to_terms: agreedToTerms,
-          marketing_consent: marketingConsent,
-          email_verified: false,
-          license_status: 'UNLICENSED',
-          status: 'ACTIVE',
-          role: 'user',
-          created_at: serverTimestamp(),
-          updated_at: serverTimestamp(),
-          is_admin: false,
-          is_active: true
-        });
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const inviteJoinCode = localStorage.getItem('pending_join_code');
 
-        // Send email verification
-        try {
-           await sendEmailVerification(userCredential.user);
-        } catch (vErr) {
-           console.error("Failed to send verification email:", vErr);
+          // Create the user document immediately
+          await setDoc(doc(db, 'users', userCredential.user.uid), {
+            id: userCredential.user.uid,
+            name: `${name} ${lastName}`.trim(),
+            first_name: name,
+            last_name: lastName,
+            email: email,
+            mobile_number: '',
+            phone: '',
+            agreed_to_terms: agreedToTerms,
+            marketing_consent: marketingConsent,
+            email_verified: false,
+            license_status: 'UNLICENSED',
+            status: 'ACTIVE',
+            role: 'user',
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            is_admin: false,
+            is_active: true
+          });
+
+          // Send email verification
+          try {
+             await sendEmailVerification(userCredential.user);
+          } catch (vErr) {
+             console.error("Failed to send verification email:", vErr);
+          }
+
+          localStorage.setItem('pending_onboarding_name', `${name} ${lastName}`.trim());
+          localStorage.setItem('pending_onboarding_contact', email);
+          localStorage.setItem('pending_onboarding_mode', inviteJoinCode ? 'join' : 'start');
         }
-
-        // Store contact for any immediate Onboarding steps needing it
-        localStorage.setItem('pending_onboarding_name', `${name} ${lastName}`.trim());
-        localStorage.setItem('pending_onboarding_contact', email);
-        localStorage.setItem('pending_onboarding_mode', inviteJoinCode ? 'join' : 'start');
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
       if (err.code === 'auth/invalid-email') {
         setError("Please enter a valid email address.");
+      } else if (err.code === 'auth/invalid-phone-number') {
+        setError("Please enter a valid phone number.");
       } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        setError("Incorrect email or password. Please try again.");
+        setError("Incorrect credentials. Please try again.");
       } else if (err.code === 'auth/user-not-found') {
         setError("No account found with this email. Please sign up first.");
       } else if (err.code === 'auth/too-many-requests') {
@@ -386,7 +421,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                 buttons: ["Explore Now"]
               }
             ].map((item, idx) => (
-              <motion.div 
+              <motion.div
                 key={idx}
                 whileHover={{ y: -10 }}
                 className="bg-white p-12 rounded-[3rem] shadow-sm border border-outline-variant/5 text-center space-y-8"
@@ -564,6 +599,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
 
       {/* Final CTA & Join Form */}
       <section id="join" className="py-24 bg-surface-container-low relative overflow-hidden">
+        <div id="recaptcha-container"></div>
         <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-primary rounded-full blur-[120px]" />
         </div>
@@ -597,7 +633,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
             <div className="bg-white p-12 rounded-[4rem] shadow-2xl border border-outline-variant/10 space-y-10">
               <div className="flex p-2 bg-surface-container-low rounded-3xl">
                 <button 
-                  onClick={() => { setJoinMode('start'); setShowPhoneStep(false); }}
+                  onClick={() => { setJoinMode('start'); setIsOtpSent(false); }}
                   className={cn(
                     "flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all",
                     joinMode === 'start' ? "bg-white text-primary shadow-lg" : "text-outline hover:text-primary"
@@ -606,7 +642,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                   Start
                 </button>
                 <button 
-                  onClick={() => { setJoinMode('login'); setShowPhoneStep(false); }}
+                  onClick={() => { setJoinMode('login'); setIsOtpSent(false); }}
                   className={cn(
                     "flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all",
                     joinMode === 'login' ? "bg-white text-primary shadow-lg" : "text-outline hover:text-primary"
@@ -627,65 +663,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                 </p>
               </div>
 
-
-              <div className="flex p-2 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl mb-6">
-                <button 
-                  onClick={() => handleAuthToggle('email')}
-                  className={cn(
-                    "flex-1 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all",
-                    authMethod === 'email' ? "bg-primary text-white shadow-md shadow-primary/20" : "text-outline hover:text-primary"
-                  )}
-                >
-                  Email
-                </button>
-                <button 
-                  onClick={() => handleAuthToggle('phone')}
-                  className={cn(
-                    "flex-1 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all",
-                    authMethod === 'phone' ? "bg-primary text-white shadow-md shadow-primary/20" : "text-outline hover:text-primary"
-                  )}
-                >
-                  Phone
-                </button>
-              </div>
-
-              
-              {emailLinkSent ? (
-                <div className="space-y-6 text-center">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                    <Mail className="w-8 h-8 text-primary" />
+              {isOtpSent ? (
+                <form onSubmit={handleVerifyOtp} className="space-y-6">
+                  <div className="space-y-2 text-center">
+                    <h3 className="text-xl font-headline font-black text-primary">Verify Your Number</h3>
+                    <p className="text-sm font-medium text-on-surface-variant">We've sent a code to {getFormattedPhoneNumber()}</p>
                   </div>
+                  
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-headline font-black text-primary">Check Your Email</h3>
-                    <p className="text-on-surface-variant font-medium">
-                      We sent a sign-in link to <span className="font-bold text-primary">{email}</span>
-                    </p>
-                    <p className="text-sm text-outline">
-                      Click the link in the email to {joinMode === 'start' ? 'create your account' : 'sign in'}. Check your spam folder if you don't see it.
-                    </p>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">6-Digit Code</label>
+                    <input 
+                      type="text" 
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      maxLength={6}
+                      placeholder="000000"
+                      required
+                      className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold text-center tracking-widest text-2xl"
+                    />
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => { handleEmailLogin(e); }}
-                    disabled={isSubmitting || resendCooldown > 0}
-                    className="w-full py-4 bg-surface-container-low text-primary rounded-2xl font-black uppercase tracking-widest border border-outline-variant/10 hover:bg-surface-container-high transition-all disabled:opacity-50"
+                  <button 
+                    type="submit"
+                    disabled={isSubmitting || otpCode.length !== 6}
+                    className="w-full py-5 bg-secondary text-white rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                   >
-                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Email'}
+                    {isSubmitting ? 'Verifying...' : 'Verify Code'}
                   </button>
+
+                  {error && (
+                    <p className="text-xs text-error font-medium bg-error/5 p-4 rounded-2xl border border-error/10 text-center">
+                      {error}
+                    </p>
+                  )}
 
                   <button
                     type="button"
-                    onClick={() => { setEmailLinkSent(false); setError(null); }}
-                    className="text-sm font-bold text-outline hover:text-primary transition-colors"
+                    onClick={() => setIsOtpSent(false)}
+                    className="w-full text-sm font-bold text-outline hover:text-primary transition-colors text-center"
                   >
-                    Use a different email
+                    Use a different number
                   </button>
-                </div>
+                </form>
               ) : (
-              <form onSubmit={handleEmailLogin} className="space-y-6">
-                {joinMode === 'start' && (
-                  <>
+                <form onSubmit={handleAuthSubmit} className="space-y-6">
+                  {joinMode === 'start' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">First Name *</label>
@@ -710,64 +732,67 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Mobile Number *</label>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Email or Phone Number {joinMode === 'start' ? '*' : ''}</label>
+                    <div className={cn("flex gap-2 transition-all", isPhoneMode && "items-center")}>
+                      {isPhoneMode && (
+                        <select
+                          value={countryCode}
+                          onChange={(e) => setCountryCode(e.target.value)}
+                          className="px-4 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none cursor-pointer"
+                        >
+                          <option value="+27">🇿🇦 +27</option>
+                          <option value="+1">🇺🇸 +1</option>
+                          <option value="+44">🇬🇧 +44</option>
+                          <option value="+91">🇬🇧 +91</option>
+                        </select>
+                      )}
                       <input 
-                        type="tel" 
-                        value={mobileNumber}
-                        onChange={(e) => setMobileNumber(e.target.value)}
-                        placeholder="+27..."
+                        type="text" 
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
+                        placeholder="your@email.com or 082 123 4567"
                         required
-                        className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                        className="flex-1 w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none transition-all"
                       />
                     </div>
-                  </>
-                )}
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Email Address {joinMode === 'start' ? '*' : ''}</label>
-                  <input 
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    required
-                    className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
-                  />
-                </div>
-
-                <div className="space-y-2 relative">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Password {joinMode === 'start' ? '*' : ''}</label>
-                  <div className="relative">
-                    <input 
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      required
-                      className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold pr-12"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
                   </div>
-                  {joinMode === 'login' && (
-                    <button
-                      type="button"
-                      onClick={() => { setShowForgotPassword(true); setForgotEmail(email); setForgotSent(false); setForgotError(null); }}
-                      className="text-xs font-bold text-primary hover:text-secondary transition-colors ml-2 mt-2 block"
-                    >
-                      Forgot password?
-                    </button>
-                  )}
-                </div>
 
-                {joinMode === 'start' && (
-                  <>
+                  {!isPhoneMode && (
+                    <div className="space-y-2 relative">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Password {joinMode === 'start' ? '*' : ''}</label>
+                      <div className="relative">
+                        <input 
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Enter your password"
+                          required={!isPhoneMode}
+                          className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold pr-12"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      {joinMode === 'login' && (
+                        <button
+                          type="button"
+                          onClick={() => { setShowForgotPassword(true); setForgotEmail(identifier); setForgotSent(false); setForgotError(null); }}
+                          className="text-xs font-bold text-primary hover:text-secondary transition-colors ml-2 mt-2 block"
+                        >
+                          Forgot password?
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {joinMode === 'start' && !isPhoneMode && (
                     <div className="space-y-2 relative">
                       <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Confirm Password *</label>
                       <div className="relative">
@@ -776,7 +801,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Re-enter your password"
-                          required
+                          required={!isPhoneMode}
                           className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold pr-12"
                         />
                         <button
@@ -788,7 +813,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                         </button>
                       </div>
                     </div>
+                  )}
 
+                  {joinMode === 'start' && (
                     <div className="space-y-4 pt-2">
                       <label className="flex items-start gap-3 cursor-pointer group">
                         <div className="relative flex items-center justify-center mt-0.5">
@@ -820,38 +847,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                         </span>
                       </label>
                     </div>
-                  </>
-                )}
-                
-                <button 
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-5 bg-secondary text-white rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {isSubmitting ? (joinMode === 'login' ? 'Signing In...' : 'Creating Account...') : joinMode === 'start' ? 'Create Account' : 'Sign In'}
-                </button>
+                  )}
+                  
+                  <button 
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full py-5 bg-secondary text-white rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isSubmitting ? (joinMode === 'login' ? 'Signing In...' : 'Creating Account...') : joinMode === 'start' ? 'Create Account' : 'Sign In'}
+                  </button>
 
-                {error && (
-                  <p className="text-xs text-error font-medium bg-error/5 p-4 rounded-2xl border border-error/10 text-center">
-                    {error}
-                  </p>
-                )}
+                  {error && (
+                    <p className="text-xs text-error font-medium bg-error/5 p-4 rounded-2xl border border-error/10 text-center">
+                      {error}
+                    </p>
+                  )}
 
-                <div className="relative py-4">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline-variant/20" /></div>
-                  <div className="relative flex justify-center text-xs uppercase font-black tracking-widest text-outline"><span className="bg-white px-4">or</span></div>
-                </div>
+                  <div className="relative py-4">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline-variant/20" /></div>
+                    <div className="relative flex justify-center text-xs uppercase font-black tracking-widest text-outline"><span className="bg-white px-4">or</span></div>
+                  </div>
 
-                <button 
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  disabled={isSubmitting}
-                  className="w-full py-5 bg-surface-container-low text-primary rounded-2xl font-black text-lg uppercase tracking-widest border border-outline-variant/10 hover:bg-surface-container-high transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                >
-                  <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="Google" />
-                  Continue with Google
-                </button>
-              </form>
+                  <button 
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    disabled={isSubmitting}
+                    className="w-full py-5 bg-surface-container-low text-primary rounded-2xl font-black text-lg uppercase tracking-widest border border-outline-variant/10 hover:bg-surface-container-high transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="Google" />
+                    Continue with Google
+                  </button>
+                </form>
               )}
             </div>
           </div>
