@@ -591,7 +591,7 @@ export const Onboarding: React.FC = () => {
                           mode === 'start' ? 'bg-primary text-white shadow-lg' : 'bg-surface-container-low text-outline hover:bg-surface-container'
                         )}
                       >
-                        <Sparkles className="w-4 h-4 inline mr-1" />Start Community
+                        <Sparkles className="w-4 h-4 inline mr-1" />Create Community (R349)
                       </button>
                       <button
                         type="button"
@@ -601,7 +601,7 @@ export const Onboarding: React.FC = () => {
                           mode === 'join' ? 'bg-primary text-white shadow-lg' : 'bg-surface-container-low text-outline hover:bg-surface-container'
                         )}
                       >
-                        <Users className="w-4 h-4 inline mr-1" />Join Community
+                        <Users className="w-4 h-4 inline mr-1" />Join Free (Trial)
                       </button>
                     </div>
 
@@ -708,7 +708,7 @@ export const Onboarding: React.FC = () => {
                           <div>
                             <h4 className="text-sm font-bold text-blue-800">1-Year Member Access</h4>
                             <p className="text-[11px] text-blue-700 leading-relaxed">
-                              You'll have full access for 1 year. Purchase a platform license anytime for permanent access and the ability to create your own community.
+                              You'll have full platform access for a 1-year trial. After that, pay R149 once-off for lifetime membership, or R349 once-off to create and lead your own community at any time.
                             </p>
                           </div>
                         </div>

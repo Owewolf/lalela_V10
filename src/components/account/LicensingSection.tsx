@@ -4,6 +4,7 @@ import { useFirebase } from '../../context/FirebaseContext';
 import { useCommunity } from '../../context/CommunityContext';
 import { Timestamp } from 'firebase/firestore';
 import { cn } from '../../lib/utils';
+import { accountService } from '../../services/accountService';
 
 interface LicensingSectionProps {
   onNavigate: (communityId: string, role: string) => void;
@@ -23,9 +24,10 @@ export const LicensingSection: React.FC<LicensingSectionProps> = ({ onNavigate }
   const handleAction = async (community: any) => {
     if (community.type === 'TRIAL') {
       try {
-        await licenseCommunity(community.id);
+        const { url } = await accountService.createCheckoutSession('community', community.id);
+        window.location.href = url;
       } catch (error) {
-        console.error('Failed to upgrade license:', error);
+        console.error('Failed to initialize checkout:', error);
       }
     } else {
       setCurrentCommunity(community.id);
@@ -66,9 +68,26 @@ export const LicensingSection: React.FC<LicensingSectionProps> = ({ onNavigate }
           <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center text-red-500 flex-shrink-0">
             <ShieldAlert className="w-6 h-6" />
           </div>
-          <div className="flex-1">
-            <h4 className="text-sm font-bold text-red-700">Membership Expired</h4>
-            <p className="text-xs text-red-600 mt-1">Your community-granted membership has expired. You are currently in read-only mode. Contact your community admin or upgrade to a personal license to regain full access.</p>
+          <div className="flex-1 flex flex-col gap-3">
+            <div>
+              <h4 className="text-sm font-bold text-red-700">Membership Expired</h4>
+              <p className="text-xs text-red-600 mt-1">Your community-granted membership trial has expired. You are currently in read-only mode. Pay R149 once-off for lifetime membership to regain full access.</p>
+            </div>
+            <div>
+              <button 
+                onClick={async () => {
+                  try {
+                    const { url } = await accountService.createCheckoutSession('membership');
+                    window.location.href = url;
+                  } catch (error) {
+                    console.error('Failed to initialize checkout:', error);
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg"
+              >
+                Upgrade Membership (R149)
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -123,10 +142,10 @@ export const LicensingSection: React.FC<LicensingSectionProps> = ({ onNavigate }
                         </button>
                       )}
                       <button 
-                        onClick={() => licenseCommunity(community.id)}
+                        onClick={() => handleAction(community)}
                         className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
                       >
-                        Upgrade
+                        Upgrade (R349)
                       </button>
                     </>
                   ) : (

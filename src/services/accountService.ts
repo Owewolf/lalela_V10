@@ -2,13 +2,7 @@ import { UserProfile, UserSession, TwoFASetupResponse, LicensingInfo } from "../
 
 const API_BASE = "/api";
 
-/**
- * Account Service
- * Handles all API calls related to user account, security, sessions, and licensing.
- */
 export const accountService = {
-  // --- Profile Management ---
-  
   async getProfile(): Promise<UserProfile> {
     const response = await fetch(`${API_BASE}/users/me`);
     if (!response.ok) throw new Error("Failed to fetch profile");
@@ -25,8 +19,6 @@ export const accountService = {
     return response.json();
   },
 
-  // --- Security & Password ---
-
   async changePassword(oldPassword: string, newPassword: string): Promise<{ message: string }> {
     const response = await fetch(`${API_BASE}/users/me/password`, {
       method: "POST",
@@ -36,8 +28,6 @@ export const accountService = {
     if (!response.ok) throw new Error("Failed to change password");
     return response.json();
   },
-
-  // --- Two-Factor Authentication (2FA) ---
 
   async get2FAStatus(): Promise<{ enabled: boolean; method: string; backup_codes_remaining: number }> {
     const response = await fetch(`${API_BASE}/users/me/security/2fa`);
@@ -73,8 +63,6 @@ export const accountService = {
     return response.json();
   },
 
-  // --- Session Management ---
-
   async getSessions(): Promise<UserSession[]> {
     const response = await fetch(`${API_BASE}/users/me/sessions`);
     if (!response.ok) throw new Error("Failed to fetch sessions");
@@ -97,29 +85,32 @@ export const accountService = {
     return response.json();
   },
 
-  // --- Security Audit Logs ---
-
   async getAuditLogs(): Promise<any[]> {
     const response = await fetch(`${API_BASE}/users/me/security/logs`);
     if (!response.ok) throw new Error("Failed to fetch audit logs");
     return response.json();
   },
 
-  // --- Licensing ---
+  // --- Licensing & Monetization ---
+  // Replaced with mock Stripe integration logic for now
 
-  async getLicensingInfo(): Promise<LicensingInfo> {
-    const response = await fetch(`${API_BASE}/users/me/licensing`);
-    if (!response.ok) throw new Error("Failed to fetch licensing info");
-    return response.json();
+  async createCheckoutSession(type: 'membership' | 'community', targetId?: string): Promise<{ url: string }> {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        let qs = `?checkout=true&type=${type}`;
+        if (targetId) qs += `&communityId=${targetId}`;
+        resolve({ url: qs });
+      }, 500);
+    });
   },
 
-  async activateLicense(licenseKey: string): Promise<{ message: string; status: string }> {
-    const response = await fetch(`${API_BASE}/users/me/licensing/activate`, {
+  async simulateSuccessfulPayment(type: 'membership' | 'community', targetId?: string): Promise<{ message: string; status: string }> {
+    const response = await fetch(`${API_BASE}/stripe/webhook-mock`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licenseKey }),
+      body: JSON.stringify({ type, targetId }),
     });
-    if (!response.ok) throw new Error("Failed to activate license");
+    if (!response.ok) throw new Error("Failed to activate license via webhook");
     return response.json();
   },
 };

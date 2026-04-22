@@ -1,0 +1,37 @@
+--- src/server/api.ts
++++ src/server/api.ts
+@@ -144,18 +144,22 @@
+ });
+ 
+-// --- Licensing & Access ---
+-router.get("/users/me/licensing", (req, res) => {
+-  res.json({
+-    status: "LICENSED",
+-    type: "1-Year Member",
+-    expiry_date: "2027-04-04T00:00:00Z",
+-    auto_renew: true,
+-    payment_method: "**** **** **** 4242"
+-  });
+-});
+-
+-router.post("/users/me/licensing/activate", (req, res) => {
+-  res.json({ message: "License activated successfully", status: "LICENSED" });
++// --- Mock Stripe Integration Webhooks ---
++router.post("/stripe/webhook-mock", (req, res) => {
++  const { type, targetId } = req.body;
++  
++  // In a real Stripe webhook, this endpoint would:
++  // 1. Verify Stripe signature
++  // 2. Parse checkout.session.completed
++  // 3. Extract type and targetId from session metadata
++  // 4. Update the user/community documents in Firestore securely
++  
++  console.log(`[Stripe Mock] Webhook received for ${type} ${targetId ? `(target: ${targetId})` : ''}`);
++  
++  res.json({ 
++    message: "Webhook processed successfully", 
++    status: "LICENSED" 
++  });
+ });
+ 
+ // --- Community Routes ---

@@ -62,8 +62,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   if (disabled) {
     return (
       <div className="p-4 bg-surface/80 backdrop-blur-md border-t border-outline-variant/10">
-        <div className="flex items-center justify-center gap-2 py-3 px-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold">
-          Your membership has expired. Upgrade to continue chatting.
+        <div className="flex items-center justify-center gap-2 py-3 px-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold text-center">
+          Your trial has expired. Pay R149 once-off for lifetime membership to continue chatting.
         </div>
       </div>
     );

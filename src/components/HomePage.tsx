@@ -212,13 +212,19 @@ export const HomePage = ({
   const publicListingContributionCount = approvedPublicCharityListings.length;
   const fundraisingGoal = typeof selectedCharity?.fundraisingGoal === 'number' ? selectedCharity.fundraisingGoal : undefined;
   const hasFundraisingGoal = typeof fundraisingGoal === 'number' && fundraisingGoal > 0;
-  const proposedAmount = hasFundraisingGoal
+  const totalCollectedAmount = potentialRaisedFromListings;
+  const progressDenominator = hasFundraisingGoal
     ? fundraisingGoal
-    : Math.max(potentialRaisedFromListings, 1);
+    : Math.max(totalCollectedAmount, 1);
   const potentialProgressPercent = Math.min(
     100,
-    Math.max((potentialRaisedFromListings / proposedAmount) * 100, 0)
+    Math.max((totalCollectedAmount / progressDenominator) * 100, 0)
   );
+  const totalCollectedLabel = `R${totalCollectedAmount.toLocaleString()}`;
+  const progressTargetLabel = hasFundraisingGoal
+    ? `R${fundraisingGoal.toLocaleString()}`
+    : totalCollectedLabel;
+  const progressPercentLabel = `${Math.round(potentialProgressPercent)}% to goal`;
   const charityDescription = typeof communityData.charity_description === 'string'
     ? communityData.charity_description
     : selectedCharity?.description;
@@ -768,6 +774,12 @@ export const HomePage = ({
                   {charityDescription || 'Supporting this month as a community-backed initiative.'}
                 </p>
                 <div className="space-y-1 pt-1">
+                  <div className="flex items-center justify-between gap-2 text-[10px] font-semibold text-primary">
+                    <span className="truncate">Total Collected: {totalCollectedLabel}</span>
+                    {hasFundraisingGoal && (
+                      <span className="whitespace-nowrap">{progressPercentLabel}</span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <div className="h-2 flex-1 rounded-full bg-primary/10 overflow-hidden">
                       <motion.div
@@ -778,7 +790,7 @@ export const HomePage = ({
                       />
                     </div>
                     <span className="text-[10px] font-semibold text-primary whitespace-nowrap">
-                      R{proposedAmount.toLocaleString()}
+                      {progressTargetLabel}
                     </span>
                   </div>
                 </div>

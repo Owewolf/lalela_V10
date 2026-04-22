@@ -142,7 +142,7 @@ export const CreateNoticeForm = ({ postSubtype, onBack, postToEdit }: CreateNoti
         </div>
         <h2 className="text-lg font-bold text-on-surface mb-2">Read-Only Mode</h2>
         <p className="text-sm text-outline mb-6 max-w-sm">
-          Your membership has expired. Upgrade your license to create notices and interact with the community.
+          Your trial has expired. Pay R149 once-off for lifetime membership to create notices and interact with the community.
         </p>
         <button onClick={onBack} className="px-6 py-2 rounded-xl text-sm font-bold bg-primary text-white">
           Go Back

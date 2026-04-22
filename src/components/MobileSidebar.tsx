@@ -57,7 +57,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
       const name = prompt('Enter community name:');
       if (name) createCommunity(name);
     } else if (!isLicensed) {
-      alert('Purchase a platform license to become a paid member before creating additional communities.');
+      alert('Start by purchasing a platform membership (R149 once-off) before creating additional communities.');
     } else {
       alert('License your current trial community before creating another.');
     }

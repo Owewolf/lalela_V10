@@ -1,0 +1,19 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -85,6 +85,16 @@
+   const [activeEmergencyPost, setActiveEmergencyPost] = useState<any>(null);
+   const [postTypeForCreate, setPostTypeForCreate] = useState<'listing' | 'notice' | null>(null);
+   const [urgencyForCreate, setUrgencyForCreate] = useState<'emergency' | 'warning' | 'info' | 'general' | null>(null);
++  
++  // Mock checkout parser
++  useEffect(() => {
++    const urlParams = new URLSearchParams(window.location.search);
++    if (urlParams.get('checkout') === 'true') {
++      const type = urlParams.get('type') as 'membership' | 'community';
++      const targetId = urlParams.get('communityId') || undefined;
++      setMockCheckoutConfig({ type, targetId });
++    }
++  }, []);
+ 
+   useEffect(() => {
+     // Re-initialize location when entering active app

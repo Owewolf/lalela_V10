@@ -69,17 +69,6 @@ function AppContent() {
   const [postTypeForCreate, setPostTypeForCreate] = useState<'listing' | 'notice' | null>(null);
   const [urgencyForCreate, setUrgencyForCreate] = useState<'general' | 'info' | 'warning' | 'emergency' | null>(null);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('checkout') === 'true') {
-      const type = (urlParams.get('type') as 'membership' | 'community') || 'membership';
-      const targetId = urlParams.get('communityId') || undefined;
-      setMockCheckoutConfig({ type, targetId });
-      // Clean up URL
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
   const getPendingEmailLink = useCallback(() => {
     const currentHref = window.location.href;
     if (isSignInWithEmailLink(auth, currentHref)) {
@@ -479,7 +468,7 @@ function AppContent() {
             onBack={() => setShowBenefitsPricing(false)}
             onUpgrade={() => {
               setShowBenefitsPricing(false);
-                window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+              setMockCheckoutConfig({ type: 'membership' });
             }}
           />
         </Suspense>
