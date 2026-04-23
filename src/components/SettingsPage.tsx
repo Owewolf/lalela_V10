@@ -35,6 +35,7 @@ import {
   Gavel
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { PostConfirmationModal } from './PostConfirmationModal';
 import { useCommunity } from '../context/CommunityContext';
 import { useFirebase } from '../context/FirebaseContext';
 import { cn } from '../lib/utils';
@@ -255,6 +256,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isProcessingSuggestion, setIsProcessingSuggestion] = React.useState<'approve' | 'reject' | null>(null);
   const [isSuggestingCharity, setIsSuggestingCharity] = React.useState(false);
   const [suggestionError, setSuggestionError] = React.useState('');
+  const [suggestionSuccess, setSuggestionSuccess] = React.useState('');
+  const [showSuggestConfirmation, setShowSuggestConfirmation] = React.useState(false);
+  const [isSubmittingSuggestion, setIsSubmittingSuggestion] = React.useState(false);
+  const [pendingSuggestionPayload, setPendingSuggestionPayload] = React.useState<{
+    community_id: string;
+    suggested_by_id: string;
+    suggested_by_name: string;
+    name: string;
+    description: string;
+    reason: string;
+    suggested_donation_amount: number;
+    website: string;
+  } | null>(null);
+  const suggestCharityFormRef = useRef<HTMLFormElement | null>(null);
 
   React.useEffect(() => {
     if (initialManageCharity) {
@@ -265,6 +280,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   React.useEffect(() => {
     if (initialSuggestCharity) {
       setSuggestionError('');
+      setSuggestionSuccess('');
       setIsSuggestingCharity(true);
     }
   }, [initialSuggestCharity]);
@@ -278,8 +294,63 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleCloseSuggestCharity = () => {
     setSuggestionError('');
+    setSuggestionSuccess('');
+    setShowSuggestConfirmation(false);
+    setIsSubmittingSuggestion(false);
+    setPendingSuggestionPayload(null);
     setIsSuggestingCharity(false);
     onCloseSuggestCharity?.();
+  };
+
+  const handlePrepareSuggestCharitySubmission = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const suggestedPercentageRaw = Number(formData.get('amount'));
+
+    if (!user?.uid || !currentCommunity?.id) {
+      setSuggestionError('Unable to submit suggestion right now. Please refresh and try again.');
+      return;
+    }
+
+    if (!Number.isInteger(suggestedPercentageRaw) || suggestedPercentageRaw < 1 || suggestedPercentageRaw > 100) {
+      setSuggestionError('Suggested percentage must be a whole number between 1 and 100.');
+      return;
+    }
+
+    setSuggestionError('');
+    setSuggestionSuccess('');
+    setPendingSuggestionPayload({
+      community_id: currentCommunity.id,
+      suggested_by_id: user.uid,
+      suggested_by_name: user.displayName || userProfile?.name || 'Community Member',
+      name: String(formData.get('name') || ''),
+      description: String(formData.get('description') || ''),
+      reason: String(formData.get('reason') || ''),
+      suggested_donation_amount: suggestedPercentageRaw,
+      website: String(formData.get('website') || ''),
+    });
+    setShowSuggestConfirmation(true);
+  };
+
+  const handleConfirmSuggestCharity = async () => {
+    if (!pendingSuggestionPayload || isSubmittingSuggestion) return;
+
+    const payload = pendingSuggestionPayload;
+    setPendingSuggestionPayload(null);
+    setIsSubmittingSuggestion(true);
+    setSuggestionError('');
+
+    try {
+      await addCharitySuggestion(payload);
+      suggestCharityFormRef.current?.reset();
+      setSuggestionSuccess('Your charity suggestion was sent successfully.');
+      setShowSuggestConfirmation(false);
+    } catch (error) {
+      setSuggestionError(error instanceof Error ? error.message : 'Failed to send your charity suggestion. Please try again.');
+      setShowSuggestConfirmation(false);
+    } finally {
+      setIsSubmittingSuggestion(false);
+    }
   };
 
   const enabledCategories = React.useMemo(() => {
@@ -576,7 +647,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <label className="block text-xs font-black uppercase tracking-widest text-outline mb-2">Description / Mission</label>
                     <textarea name="description" defaultValue={selectedCharity?.description} required rows={4} className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-2 focus:ring-primary/20" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-black uppercase tracking-widest text-outline mb-2">Category</label>
                       <select name="category" defaultValue={selectedCharity?.category} className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-2 focus:ring-primary/20">
@@ -606,7 +677,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <label className="block text-xs font-black uppercase tracking-widest text-outline mb-2">Location Name</label>
                     <input name="location_name" defaultValue={selectedCharity?.location_name ?? currentCommunity?.coverageArea?.location_name ?? 'Community Coverage Area'} required className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-2 focus:ring-primary/20" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-black uppercase tracking-widest text-outline mb-2">Latitude</label>
                       <input name="latitude" type="number" step="any" defaultValue={selectedCharity?.latitude ?? currentCommunity?.coverageArea?.latitude} required className="w-full px-4 py-3 bg-surface-container-low rounded-xl border-none focus:ring-2 focus:ring-primary/20" />
@@ -852,12 +923,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   return (
-    <main className="max-w-2xl mx-auto px-6 pt-6 pb-32">
+    <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-36 sm:pb-32">
       {/* User Profile Section - Identity Hub */}
-      <section className="mb-10 bg-surface-container-lowest rounded-[2rem] p-8 shadow-sm border border-surface-container">
-        <div className="flex items-center gap-8 mb-8">
+      <section className="mb-12 sm:mb-10 bg-surface-container-lowest rounded-[2rem] p-5 sm:p-8 shadow-sm border border-surface-container">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-8 mb-8">
           <div className="relative">
-            <div className="w-28 h-28 rounded-full overflow-hidden bg-surface-container-high border-4 border-surface-container-lowest shadow-ambient">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-surface-container-high border-4 border-surface-container-lowest shadow-ambient">
               <img 
                 alt="User Avatar" 
                 className="w-full h-full object-cover" 
@@ -871,7 +942,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-3xl font-bold font-headline text-on-surface leading-tight">{userProfile?.name}</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold font-headline text-on-surface leading-tight break-words">{userProfile?.name}</h2>
               <button 
                 onClick={onNavigateToAccountSecurity} 
                 className="p-1 text-outline hover:text-primary transition-colors"
@@ -881,7 +952,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </button>
             </div>
             
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
               <div className="flex items-center gap-2 text-on-surface-variant font-medium">
                 <MapPin className="w-4 h-4 text-primary" />
                 <span>{currentCommunity?.name}</span>
@@ -956,13 +1027,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
               <div className="flex items-center gap-3">
                 {currentCommunity && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onNavigateToCommunityDashboard(currentCommunity.id, currentCommunity.userRole || 'Member');
                       }}
-                      className="px-2 py-1 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm"
+                      className="px-2 py-1 bg-emerald-500 text-white text-[7px] sm:text-[8px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm whitespace-nowrap"
                     >
                       Admin Dashboard
                     </button>
@@ -1073,7 +1144,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       </section>
 
       {/* My Businesses Section */}
-      <section className="mb-10">
+      <section className="mb-12 sm:mb-10">
         <div className="flex items-center justify-between mb-4 px-2">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-outline">My Businesses</h3>
           <button 
@@ -1174,7 +1245,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       </section>
 
       {/* General Settings */}
-      <div className="space-y-2 mb-10">
+      <div className="space-y-2 mb-12 sm:mb-10">
         <h3 className="px-2 pb-2 text-[10px] font-bold uppercase tracking-widest text-outline">General Settings</h3>
         
         {[
@@ -1203,10 +1274,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       {/* Community License */}
-      <div className="mb-12 p-6 rounded-3xl bg-primary-container text-on-primary-container">
+      <div className="mb-14 sm:mb-12 p-6 rounded-3xl bg-primary-container text-on-primary-container">
         <h3 className="pb-6 text-[10px] font-bold uppercase tracking-widest text-on-primary-container/60">Community License</h3>
         <div className="space-y-6">
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-0">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2">Plan</p>
               <p className="text-3xl font-headline font-extrabold text-white">
@@ -1297,7 +1368,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       {/* Suggest Charity Modal (for Members) */}
       <AnimatePresence>
         {isSuggestingCharity && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-6 overflow-y-auto py-10">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-3 sm:px-6 overflow-y-auto py-6 sm:py-10">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1309,9 +1380,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
+              className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
             >
-              <div className="p-8">
+              <div className="p-5 sm:p-8">
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h2 className="text-2xl font-headline font-bold text-primary">Suggest a Charity</h2>
@@ -1326,35 +1397,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 </div>
 
                 <form 
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const suggestedPercentageRaw = Number(formData.get('amount'));
-
-                    if (!user?.uid || !currentCommunity?.id) {
-                      setSuggestionError('Unable to submit suggestion right now. Please refresh and try again.');
-                      return;
-                    }
-
-                    if (!Number.isInteger(suggestedPercentageRaw) || suggestedPercentageRaw < 1 || suggestedPercentageRaw > 100) {
-                      setSuggestionError('Suggested percentage must be a whole number between 1 and 100.');
-                      return;
-                    }
-
-                    setSuggestionError('');
-                    await addCharitySuggestion({
-                      community_id: currentCommunity.id,
-                      suggested_by_id: user.uid,
-                      suggested_by_name: user.displayName || userProfile?.name || 'Community Member',
-                      name: formData.get('name') as string,
-                      description: formData.get('description') as string,
-                      reason: formData.get('reason') as string,
-                      suggested_donation_amount: suggestedPercentageRaw,
-                      website: formData.get('website') as string,
-                    });
-                    (e.currentTarget as HTMLFormElement).reset();
-                    handleCloseSuggestCharity();
-                  }}
+                  ref={suggestCharityFormRef}
+                  onSubmit={handlePrepareSuggestCharitySubmission}
                   className="space-y-4"
                 >
                   <div>
@@ -1376,7 +1420,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all resize-none" 
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Suggested Percentage (%)</label>
                       <input 
@@ -1414,6 +1458,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   {suggestionError && (
                     <p className="text-xs text-error font-semibold">{suggestionError}</p>
                   )}
+                  {suggestionSuccess && (
+                    <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-emerald-700">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <p className="text-xs font-semibold">{suggestionSuccess}</p>
+                    </div>
+                  )}
                   <div className="pt-4 flex gap-3">
                     <button 
                       type="button"
@@ -1424,14 +1474,37 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     </button>
                     <button 
                       type="submit"
-                      className="flex-[2] py-3.5 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                      disabled={isSubmittingSuggestion}
+                      className={cn(
+                        "flex-[2] py-3.5 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 transition-all",
+                        isSubmittingSuggestion ? "opacity-60 cursor-not-allowed" : "hover:scale-[1.02] active:scale-95"
+                      )}
                     >
-                      Submit Suggestion
+                      {isSubmittingSuggestion ? 'Submitting...' : 'Submit Suggestion'}
                     </button>
                   </div>
                 </form>
               </div>
             </motion.div>
+
+            <PostConfirmationModal
+              isOpen={showSuggestConfirmation}
+              ctaLabel="Send Suggestion"
+              postType="Charity Suggestion"
+              communityName={currentCommunity?.name || 'Your Community'}
+              title={pendingSuggestionPayload?.name || ''}
+              themeColor="bg-primary"
+              customTitle="Confirm Charity Suggestion"
+              customMessage="Confirm you want to send your charity suggestion."
+              cancelLabel="No, cancel"
+              confirmLabel={isSubmittingSuggestion ? 'Sending...' : 'Yes, confirm'}
+              confirmDisabled={isSubmittingSuggestion}
+              onConfirm={handleConfirmSuggestCharity}
+              onCancel={() => {
+                if (isSubmittingSuggestion) return;
+                setShowSuggestConfirmation(false);
+              }}
+            />
           </div>
         )}
       </AnimatePresence>
@@ -1448,7 +1521,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       {/* Add Business Modal */}
       <AnimatePresence>
         {isAddingBusiness && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-6 overflow-y-auto py-10">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-3 sm:px-6 overflow-y-auto py-6 sm:py-10">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1463,7 +1536,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-surface rounded-[2.5rem] p-8 shadow-2xl overflow-hidden my-auto"
+              className="relative w-full max-w-lg bg-surface rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-hidden my-auto"
             >
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-2xl font-bold font-headline text-primary">
@@ -1515,7 +1588,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   setIsAddingBusiness(false);
                   setEditingBusinessId(null);
                 }}
-                className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar"
+                className="space-y-6 max-h-[70vh] overflow-y-auto pr-1 sm:pr-2 custom-scrollbar"
               >
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Business Name</label>
@@ -1528,7 +1601,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Category</label>
                     <select 
@@ -1560,7 +1633,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Linked Charity (Optional)</label>
                     <select 
@@ -1610,7 +1683,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Latitude</label>
                     <input 
@@ -1637,7 +1710,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Phone</label>
                     <input 
@@ -1686,7 +1759,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       {/* Charity Management Modal */}
       <AnimatePresence>
         {isManagingCharity && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-6 overflow-y-auto py-10">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-3 sm:px-6 overflow-y-auto py-6 sm:py-10">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1698,7 +1771,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-surface rounded-[2.5rem] p-8 shadow-2xl overflow-hidden my-auto"
+              className="relative w-full max-w-2xl bg-surface rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-hidden my-auto"
             >
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-2xl font-bold font-headline text-primary">Community Charity</h3>
@@ -1721,7 +1794,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       {/* Create Community Modal */}
       <AnimatePresence>
         {isCreatingCommunity && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-3 sm:px-6">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1733,7 +1806,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-surface rounded-[2.5rem] p-8 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-surface rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-2xl font-bold font-headline text-primary">New Community</h3>

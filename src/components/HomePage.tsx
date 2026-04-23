@@ -440,13 +440,6 @@ export const HomePage = ({
         "bg-surface-container-low rounded-3xl p-6 shadow-sm transition-all duration-500 space-y-6",
         isEmergencyActive && "ring-4 ring-error/30 bg-error/5"
       )}>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
-          <div className="space-y-1">
-            <h3 className="text-xl font-bold font-headline">Interactive Coverage Map</h3>
-            <p className="text-xs text-outline font-medium">Live discovery layer for your community radius</p>
-          </div>
-        </div>
-
         <div className="relative">
           <InteractiveCoverageMap 
             center={mapCenter}
@@ -491,7 +484,7 @@ export const HomePage = ({
               className="flex items-center gap-2 px-4 py-2 bg-surface-container-high text-primary rounded-xl text-xs font-bold hover:bg-surface-container-highest transition-all active:scale-95"
             >
               <Navigation className="w-4 h-4" />
-              Reset Map View
+              {`Reset ${currentCommunity?.name || 'Community'} View`}
             </button>
           </div>
         )}

@@ -16,7 +16,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSequent
 
   if (message.messageType === 'system') {
     return (
-      <div className="flex justify-center my-4">
+      <div className="flex justify-center my-2">
         <div className="bg-surface-container-low px-4 py-1.5 rounded-full border border-outline-variant/10">
           <p className="text-[10px] font-bold text-outline uppercase tracking-widest">{message.text}</p>
         </div>
@@ -31,7 +31,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSequent
       className={cn(
         "flex flex-col max-w-[85%] sm:max-w-[70%]",
         isMe ? "ml-auto items-end" : "mr-auto items-start",
-        !isSequential && "mt-4"
+        !isSequential && "mt-2"
       )}
     >
       {!isMe && !isSequential && (

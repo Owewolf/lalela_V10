@@ -10,6 +10,7 @@ interface ChatComposerProps {
   onSendLocation?: () => void;
   placeholder?: string;
   disabled?: boolean;
+  containerClassName?: string;
 }
 
 export const ChatComposer: React.FC<ChatComposerProps> = ({ 
@@ -19,6 +20,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   onSendLocation,
   placeholder = "Type a message...",
   disabled = false,
+  containerClassName,
 }) => {
   const [text, setText] = useState('');
   const [showActions, setShowActions] = useState(false);
@@ -61,7 +63,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
   if (disabled) {
     return (
-      <div className="p-4 bg-surface/80 backdrop-blur-md border-t border-outline-variant/10">
+      <div className={cn("p-4 bg-surface/80 backdrop-blur-md border-t border-outline-variant/10", containerClassName)}>
         <div className="flex items-center justify-center gap-2 py-3 px-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold text-center">
           Your trial has expired. Pay R149 once-off for lifetime membership to continue chatting.
         </div>
@@ -70,7 +72,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   }
 
   return (
-    <div className="p-4 bg-surface/80 backdrop-blur-md border-t border-outline-variant/10">
+    <div className={cn("p-4 bg-surface/80 backdrop-blur-md border-t border-outline-variant/10", containerClassName)}>
       <div className="flex items-end gap-2 max-w-4xl mx-auto">
         <div className="flex items-center gap-1 mb-0.5">
           <button 

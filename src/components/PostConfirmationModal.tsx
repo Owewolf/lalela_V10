@@ -12,6 +12,11 @@ interface PostConfirmationModalProps {
   themeColor: string;
   onConfirm: () => void;
   onCancel: () => void;
+  customTitle?: string;
+  customMessage?: string;
+  cancelLabel?: string;
+  confirmLabel?: string;
+  confirmDisabled?: boolean;
 }
 
 export const PostConfirmationModal: React.FC<PostConfirmationModalProps> = ({
@@ -23,6 +28,11 @@ export const PostConfirmationModal: React.FC<PostConfirmationModalProps> = ({
   themeColor,
   onConfirm,
   onCancel,
+  customTitle,
+  customMessage,
+  cancelLabel,
+  confirmLabel,
+  confirmDisabled = false,
 }) => {
   return (
     <AnimatePresence>
@@ -48,12 +58,16 @@ export const PostConfirmationModal: React.FC<PostConfirmationModalProps> = ({
               )}>
                 <AlertCircle className={cn("w-8 h-8", themeColor.replace('bg-', 'text-'))} />
               </div>
-              <h3 className="font-headline font-black text-xl text-slate-800">Confirm Your Post</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                You are about to <span className="font-bold text-slate-700">{ctaLabel}</span> in{' '}
-                <span className="font-bold italic text-slate-700">{communityName}</span>.
-                Please confirm this is correct.
-              </p>
+              <h3 className="font-headline font-black text-xl text-slate-800">{customTitle ?? 'Confirm Your Post'}</h3>
+              {customMessage ? (
+                <p className="text-sm text-slate-500 leading-relaxed">{customMessage}</p>
+              ) : (
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  You are about to <span className="font-bold text-slate-700">{ctaLabel}</span> in{' '}
+                  <span className="font-bold italic text-slate-700">{communityName}</span>.
+                  Please confirm this is correct.
+                </p>
+              )}
               {title && (
                 <div className="mt-3 px-4 py-2.5 bg-slate-50 rounded-2xl border border-slate-100">
                   <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">{postType}</p>
@@ -66,12 +80,14 @@ export const PostConfirmationModal: React.FC<PostConfirmationModalProps> = ({
                 onClick={onCancel}
                 className="flex-1 py-3 rounded-2xl border-2 border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all active:scale-95"
               >
-                Cancel
+                {cancelLabel ?? 'Cancel'}
               </button>
               <button
                 onClick={onConfirm}
+                disabled={confirmDisabled}
                 className={cn(
                   "flex-1 py-3 rounded-2xl text-white font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2",
+                  confirmDisabled && "opacity-60 cursor-not-allowed active:scale-100",
                   themeColor,
                   themeColor === 'bg-error' && 'hover:bg-error/90',
                   themeColor === 'bg-blue-600' && 'hover:bg-blue-700',
@@ -80,7 +96,7 @@ export const PostConfirmationModal: React.FC<PostConfirmationModalProps> = ({
                   themeColor === 'bg-secondary' && 'hover:bg-secondary/90'
                 )}
               >
-                {ctaLabel}
+                {confirmLabel ?? ctaLabel}
                 <Send className="w-4 h-4" />
               </button>
             </div>

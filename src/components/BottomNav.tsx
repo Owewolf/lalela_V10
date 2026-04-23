@@ -16,7 +16,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange, ha
     let lastScrollY = window.scrollY;
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY) {
+      if (currentScrollY <= 0) {
+        setIsVisible(true); // at top → always visible
+      } else if (currentScrollY > lastScrollY) {
         setIsVisible(false); // scrolling DOWN → hide
       } else if (currentScrollY < lastScrollY) {
         setIsVisible(true);  // scrolling UP → show

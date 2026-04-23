@@ -46,6 +46,7 @@ export const ChatDetailPage: React.FC<ChatDetailPageProps> = ({ chat, onBack }) 
   const name = member?.name || chat.otherParticipant?.name || chat.metadata?.title || 'Conversation';
   const image = member?.image || chat.otherParticipant?.profile_image || chat.metadata?.image;
   const role = member?.role || 'Member';
+  const composerOverlayClass = "fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]";
 
   const roleBadgeClass = (r: string) => {
     switch (r) {
@@ -66,7 +67,7 @@ export const ChatDetailPage: React.FC<ChatDetailPageProps> = ({ chat, onBack }) 
   if (isSecurity) summaryParts.push('Security');
 
   return (
-    <div className="flex flex-col h-screen bg-surface african-pattern overflow-hidden">
+    <div className="flex flex-col h-dvh bg-surface african-pattern overflow-hidden">
       <main className="flex-1 flex flex-col min-h-0 relative">
         {/* Profile Header */}
         <div className="bg-surface border-b border-outline-variant/10 safe-area-top">
@@ -172,6 +173,7 @@ export const ChatDetailPage: React.FC<ChatDetailPageProps> = ({ chat, onBack }) 
           onTyping={(typing) => setTypingStatus(chat.id, typing)}
           placeholder={chat.type === 'emergency' ? "Send emergency update..." : "Type a message..."}
           disabled={!!isChatDisabled}
+          containerClassName={composerOverlayClass}
         />
       </main>
     </div>

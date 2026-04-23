@@ -641,12 +641,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
               </div>
             </div>
 
-            <div className="bg-white p-12 rounded-[4rem] shadow-2xl border border-outline-variant/10 space-y-10">
+            <div className="bg-white p-5 sm:p-8 lg:p-12 rounded-[2.5rem] sm:rounded-[3rem] lg:rounded-[4rem] shadow-2xl border border-outline-variant/10 space-y-6 sm:space-y-8 lg:space-y-10">
               <div className="flex p-2 bg-surface-container-low rounded-3xl">
                 <button 
                   onClick={() => { setJoinMode('start'); setIsOtpSent(false); }}
                   className={cn(
-                    "flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all",
+                    "flex-1 py-3 sm:py-4 rounded-2xl font-black uppercase tracking-widest transition-all text-xs sm:text-sm",
                     joinMode === 'start' ? "bg-white text-primary shadow-lg" : "text-outline hover:text-primary"
                   )}
                 >
@@ -655,7 +655,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                 <button 
                   onClick={() => { setJoinMode('login'); setIsOtpSent(false); }}
                   className={cn(
-                    "flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all",
+                    "flex-1 py-3 sm:py-4 rounded-2xl font-black uppercase tracking-widest transition-all text-xs sm:text-sm",
                     joinMode === 'login' ? "bg-white text-primary shadow-lg" : "text-outline hover:text-primary"
                   )}
                 >
@@ -663,11 +663,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                 </button>
               </div>
 
-              <div className="text-center space-y-2">
-                <h3 className="text-3xl font-headline font-black text-primary">
+              <div className="text-center space-y-1.5 sm:space-y-2">
+                <h3 className="text-2xl sm:text-3xl font-headline font-black text-primary leading-tight">
                   {joinMode === 'start' ? 'Create Your Account' : 'Welcome Back'}
                 </h3>
-                <p className="text-on-surface-variant font-medium">
+                <p className="text-sm sm:text-base text-on-surface-variant font-medium">
                   {joinMode === 'start'
                     ? 'Start or join a community — set up in minutes'
                     : 'Sign in to access your communities'}
@@ -717,9 +717,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                   </button>
                 </form>
               ) : (
-                <form onSubmit={handleAuthSubmit} className="space-y-6">
+                <form onSubmit={handleAuthSubmit} className="space-y-4 sm:space-y-6">
                   {joinMode === 'start' && (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">First Name *</label>
                         <input 
@@ -728,7 +728,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                           onChange={(e) => setName(e.target.value)}
                           placeholder="e.g. Sipho"
                           required
-                          className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                          className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
                         />
                       </div>
                       <div className="space-y-2">
@@ -739,7 +739,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                           onChange={(e) => setLastName(e.target.value)}
                           placeholder="e.g. Ndlovu"
                           required
-                          className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                          className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold"
                         />
                       </div>
                     </div>
@@ -757,7 +757,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                       placeholder="your@email.com"
                       required={!isPhoneMode}
                       disabled={mobileNumber.length > 0}
-                      className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -769,22 +769,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
 
                   <div className="space-y-2 relative">
                     <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Phone Number {joinMode === 'start' ? '*' : ''}</label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5 sm:gap-2">
                       <select
                         value={countryCode}
                         onChange={(e) => setCountryCode(e.target.value)}
                         disabled={email.length > 0}
-                        className="px-4 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="min-w-[88px] sm:min-w-[120px] px-2.5 sm:px-4 py-3 sm:py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold text-sm sm:text-base outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        <option value="+27">🇿🇦 +27</option>
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="+44">🇬🇧 +44</option>
-                        <option value="+91">🇮🇳 +91</option>
-                        <option value="+254">🇰🇪 +254</option>
-                        <option value="+234">🇳🇬 +234</option>
-                        <option value="+49">🇩🇪 +49</option>
-                        <option value="+33">🇫🇷 +33</option>
-                        <option value="+61">🇦🇺 +61</option>
+                        <option value="+27">+27</option>
+                        <option value="+1">+1</option>
+                        <option value="+44">+44</option>
+                        <option value="+91">+91</option>
+                        <option value="+254">+254</option>
+                        <option value="+234">+234</option>
+                        <option value="+49">+49</option>
+                        <option value="+33">+33</option>
+                        <option value="+61">+61</option>
                       </select>
                       <input
                         type="tel"
@@ -795,7 +795,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                         }}
                         placeholder="082 123 4567"
                         disabled={email.length > 0}
-                        className="flex-1 px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex-1 min-w-0 px-4 sm:px-6 py-3 sm:py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 font-bold outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -810,7 +810,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Enter your password"
                           required={!isPhoneMode}
-                          className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold pr-12"
+                          className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold pr-12"
                         />
                         <button
                           type="button"
@@ -842,7 +842,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Re-enter your password"
                           required={!isPhoneMode}
-                          className="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold pr-12"
+                          className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold pr-12"
                         />
                         <button
                           type="button"
@@ -892,7 +892,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                   <button 
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-5 bg-secondary text-white rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                    className="w-full py-4 sm:py-5 bg-secondary text-white rounded-2xl font-black text-base sm:text-lg uppercase tracking-widest shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                   >
                     {isSubmitting ? (joinMode === 'login' ? 'Signing In...' : 'Creating Account...') : joinMode === 'start' ? 'Create Account' : 'Sign In'}
                   </button>
@@ -912,7 +912,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                     type="button"
                     onClick={handleGoogleLogin}
                     disabled={isSubmitting}
-                    className="w-full py-5 bg-surface-container-low text-primary rounded-2xl font-black text-lg uppercase tracking-widest border border-outline-variant/10 hover:bg-surface-container-high transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                    className="w-full py-4 sm:py-5 bg-surface-container-low text-primary rounded-2xl font-black text-base sm:text-lg uppercase tracking-widest border border-outline-variant/10 hover:bg-surface-container-high transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                   >
                     <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="Google" />
                     Continue with Google
