@@ -37,6 +37,7 @@ import { useFirebase } from '../context/FirebaseContext';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { APP_LOGO_PATH } from '../constants';
 import { cn } from '../lib/utils';
+import { PostConfirmationModal } from './PostConfirmationModal';
 
 interface LandingPageProps {
   onJoin: () => void;
@@ -66,6 +67,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
   const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [showAuthConfirmation, setShowAuthConfirmation] = useState(false);
+  const [pendingAuthAction, setPendingAuthAction] = useState<'authSubmit' | 'verifyOtp' | 'forgotPassword' | null>(null);
 
   const { setupRecaptcha, signInWithPhone, verifySmsCode, confirmationResult, clearPhoneAuth } = useFirebase();
   const [otpCode, setOtpCode] = useState('');
@@ -168,8 +171,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirmVerifyOtp = async () => {
     setIsSubmitting(true);
     setError(null);
 
@@ -177,6 +179,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
       const user = await verifySmsCode(otpCode);
       if (user) {
         await handlePhoneSuccess(user.user);
+        setShowAuthConfirmation(false);
+        setPendingAuthAction(null);
         onStart();
       } else {
         throw new Error("Failed to authenticate.");
@@ -186,16 +190,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
       setError(err.message || 'Invalid code');
     } finally {
       setIsSubmitting(false);
+      setShowAuthConfirmation(false);
+      setPendingAuthAction(null);
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  const handlePrepareVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
+    if (otpCode.length !== 6 || isSubmitting) return;
+    setPendingAuthAction('verifyOtp');
+    setShowAuthConfirmation(true);
+  };
+
+  const handleConfirmForgotPassword = async () => {
     setForgotSubmitting(true);
     setForgotError(null);
     try {
       await sendPasswordResetEmail(auth, forgotEmail);
       setForgotSent(true);
+      setShowAuthConfirmation(false);
+      setPendingAuthAction(null);
     } catch (err: any) {
       console.error('Password reset error:', err);
       if (err.code === 'auth/user-not-found') {
@@ -209,11 +223,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
       }
     } finally {
       setForgotSubmitting(false);
+      setShowAuthConfirmation(false);
+      setPendingAuthAction(null);
     }
   };
 
-  const handleAuthSubmit = async (e: React.FormEvent) => {
+  const handlePrepareForgotPassword = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!forgotEmail || forgotSubmitting) return;
+    setPendingAuthAction('forgotPassword');
+    setShowAuthConfirmation(true);
+  };
+
+  const handleConfirmAuthSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
     try {
@@ -284,6 +306,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
           localStorage.setItem('pending_onboarding_mode', inviteJoinCode ? 'join' : 'start');
         }
       }
+
+      setShowAuthConfirmation(false);
+      setPendingAuthAction(null);
     } catch (err: any) {
       console.error("Auth Error:", err);
       if (err.code === 'auth/invalid-email') {
@@ -303,7 +328,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
       }
     } finally {
       setIsSubmitting(false);
+      setShowAuthConfirmation(false);
+      setPendingAuthAction(null);
     }
+  };
+
+  const handlePrepareAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    setPendingAuthAction('authSubmit');
+    setShowAuthConfirmation(true);
   };
 
   return (
@@ -675,7 +709,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
               </div>
 
               {isOtpSent ? (
-                <form onSubmit={handleVerifyOtp} className="space-y-6">
+                <form onSubmit={handlePrepareVerifyOtp} className="space-y-6">
                   <div className="space-y-2 text-center">
                     <h3 className="text-xl font-headline font-black text-primary">Verify Your Number</h3>
                     <p className="text-sm font-medium text-on-surface-variant">We've sent a code to {getFormattedPhoneNumber()}</p>
@@ -717,7 +751,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                   </button>
                 </form>
               ) : (
-                <form onSubmit={handleAuthSubmit} className="space-y-4 sm:space-y-6">
+                <form onSubmit={handlePrepareAuthSubmit} className="space-y-4 sm:space-y-6">
                   {joinMode === 'start' && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -983,6 +1017,78 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
         </div>
       </footer>
 
+      <PostConfirmationModal
+        isOpen={showAuthConfirmation}
+        ctaLabel={
+          pendingAuthAction === 'verifyOtp'
+            ? 'Verify Code'
+            : pendingAuthAction === 'forgotPassword'
+              ? 'Send Reset Link'
+              : joinMode === 'start'
+                ? 'Create Account'
+                : 'Sign In'
+        }
+        postType={
+          pendingAuthAction === 'verifyOtp'
+            ? 'Phone Verification'
+            : pendingAuthAction === 'forgotPassword'
+              ? 'Password Reset'
+              : 'Authentication'
+        }
+        communityName="Lalela"
+        title={
+          pendingAuthAction === 'verifyOtp'
+            ? otpCode
+            : pendingAuthAction === 'forgotPassword'
+              ? forgotEmail
+              : (isPhoneMode ? getFormattedPhoneNumber() : email)
+        }
+        themeColor="bg-primary"
+        customTitle={
+          pendingAuthAction === 'verifyOtp'
+            ? 'Confirm Code Verification'
+            : pendingAuthAction === 'forgotPassword'
+              ? 'Confirm Password Reset'
+              : joinMode === 'start'
+                ? 'Confirm Account Creation'
+                : 'Confirm Sign In'
+        }
+        customMessage={
+          pendingAuthAction === 'verifyOtp'
+            ? 'Confirm you want to verify this OTP code.'
+            : pendingAuthAction === 'forgotPassword'
+              ? 'Confirm you want to send a password reset link to this email.'
+              : joinMode === 'start'
+                ? 'Confirm you want to create this account.'
+                : 'Confirm you want to sign in with these credentials.'
+        }
+        cancelLabel="No, cancel"
+        confirmLabel={
+          pendingAuthAction === 'verifyOtp'
+            ? (isSubmitting ? 'Verifying...' : 'Yes, verify')
+            : pendingAuthAction === 'forgotPassword'
+              ? (forgotSubmitting ? 'Sending...' : 'Yes, send')
+              : (isSubmitting ? (joinMode === 'login' ? 'Signing In...' : 'Creating Account...') : 'Yes, confirm')
+        }
+        confirmDisabled={isSubmitting || forgotSubmitting}
+        onConfirm={() => {
+          if (pendingAuthAction === 'verifyOtp') {
+            void handleConfirmVerifyOtp();
+            return;
+          }
+          if (pendingAuthAction === 'forgotPassword') {
+            void handleConfirmForgotPassword();
+            return;
+          }
+          void handleConfirmAuthSubmit();
+        }}
+        onCancel={() => {
+          if (isSubmitting || forgotSubmitting) return;
+          setShowAuthConfirmation(false);
+          setPendingAuthAction(null);
+        }}
+      />
+
       {/* Forgot Password Overlay */}
       <AnimatePresence>
         {showForgotPassword && (
@@ -1023,7 +1129,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onJoin, onStart, onVie
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleForgotPassword} className="space-y-6">
+                <form onSubmit={handlePrepareForgotPassword} className="space-y-6">
                   <div className="text-center space-y-3">
                     <img
                       src={APP_LOGO_PATH}

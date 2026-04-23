@@ -50,6 +50,7 @@ import { useCommunity } from '../context/CommunityContext';
 import { useFirebase } from '../context/FirebaseContext';
 import { useGoogleMaps } from '../context/GoogleMapsContext';
 import { cn } from '../lib/utils';
+import { PostConfirmationModal } from './PostConfirmationModal';
 
 import { ModerationCenter, ModerationCenterHandle } from './ModerationCenter';
 
@@ -118,7 +119,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeVolunteersCount, setActiveVolunteersCount] = React.useState(0);
   const [isSuggestingCharity, setIsSuggestingCharity] = React.useState(false);
   const [suggestionError, setSuggestionError] = React.useState('');
+  const [showSuggestConfirmation, setShowSuggestConfirmation] = React.useState(false);
+  const [isSubmittingSuggestion, setIsSubmittingSuggestion] = React.useState(false);
+  const [pendingSuggestionPayload, setPendingSuggestionPayload] = React.useState<{
+    community_id: string;
+    suggested_by_id: string;
+    suggested_by_name: string;
+    name: string;
+    description: string;
+    reason: string;
+    suggested_donation_amount: number;
+    website: string;
+  } | null>(null);
   const { addCharitySuggestion } = useCommunity();
+
+  const handlePrepareSuggestCharitySubmission = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const suggestedPercentageRaw = Number(formData.get('amount'));
+
+    if (!user?.uid || !currentCommunity?.id) {
+      setSuggestionError('Unable to submit suggestion right now. Please refresh and try again.');
+      return;
+    }
+
+    if (!Number.isInteger(suggestedPercentageRaw) || suggestedPercentageRaw < 1 || suggestedPercentageRaw > 100) {
+      setSuggestionError('Suggested percentage must be a whole number between 1 and 100.');
+      return;
+    }
+
+    setSuggestionError('');
+    setPendingSuggestionPayload({
+      community_id: currentCommunity.id,
+      suggested_by_id: user.uid,
+      suggested_by_name: user?.displayName || 'Community Member',
+      name: formData.get('name') as string,
+      description: formData.get('description') as string,
+      reason: formData.get('reason') as string,
+      suggested_donation_amount: suggestedPercentageRaw,
+      website: formData.get('website') as string,
+    });
+    setShowSuggestConfirmation(true);
+  };
+
+  const handleConfirmSuggestCharitySubmission = async () => {
+    if (!pendingSuggestionPayload || isSubmittingSuggestion) return;
+
+    setIsSubmittingSuggestion(true);
+    try {
+      await addCharitySuggestion(pendingSuggestionPayload);
+      setPendingSuggestionPayload(null);
+      setShowSuggestConfirmation(false);
+      setIsSuggestingCharity(false);
+    } catch (error) {
+      setSuggestionError(error instanceof Error ? error.message : 'Failed to submit suggestion. Please try again.');
+      setShowSuggestConfirmation(false);
+    } finally {
+      setIsSubmittingSuggestion(false);
+    }
+  };
 
   // Guided setup state
   const [setupStepIndex, setSetupStepIndex] = React.useState(0);
@@ -1044,35 +1103,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 <form 
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const suggestedPercentageRaw = Number(formData.get('amount'));
-
-                    if (!user?.uid || !currentCommunity?.id) {
-                      setSuggestionError('Unable to submit suggestion right now. Please refresh and try again.');
-                      return;
-                    }
-
-                    if (!Number.isInteger(suggestedPercentageRaw) || suggestedPercentageRaw < 1 || suggestedPercentageRaw > 100) {
-                      setSuggestionError('Suggested percentage must be a whole number between 1 and 100.');
-                      return;
-                    }
-
-                    setSuggestionError('');
-                    await addCharitySuggestion({
-                      community_id: currentCommunity.id,
-                      suggested_by_id: user.uid,
-                      suggested_by_name: user?.displayName || 'Community Member',
-                      name: formData.get('name') as string,
-                      description: formData.get('description') as string,
-                      reason: formData.get('reason') as string,
-                      suggested_donation_amount: suggestedPercentageRaw,
-                      website: formData.get('website') as string,
-                    });
-                    (e.currentTarget as HTMLFormElement).reset();
-                    setIsSuggestingCharity(false);
-                  }}
+                  onSubmit={handlePrepareSuggestCharitySubmission}
                   className="space-y-4"
                 >
                   <div>
@@ -1145,12 +1176,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </button>
                     <button 
                       type="submit"
+                      disabled={isSubmittingSuggestion}
                       className="flex-[2] py-3.5 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
                     >
-                      Submit Suggestion
+                      {isSubmittingSuggestion ? 'Submitting...' : 'Submit Suggestion'}
                     </button>
                   </div>
                 </form>
+
+                <PostConfirmationModal
+                  isOpen={showSuggestConfirmation}
+                  ctaLabel="Send Suggestion"
+                  postType="Charity Suggestion"
+                  communityName={currentCommunity?.name || 'Your Community'}
+                  title={pendingSuggestionPayload?.name || ''}
+                  themeColor="bg-primary"
+                  customTitle="Confirm Charity Suggestion"
+                  customMessage="Confirm you want to send this charity suggestion."
+                  cancelLabel="No, cancel"
+                  confirmLabel={isSubmittingSuggestion ? 'Sending...' : 'Yes, confirm'}
+                  confirmDisabled={isSubmittingSuggestion}
+                  onConfirm={handleConfirmSuggestCharitySubmission}
+                  onCancel={() => {
+                    if (isSubmittingSuggestion) return;
+                    setShowSuggestConfirmation(false);
+                    setPendingSuggestionPayload(null);
+                  }}
+                />
               </div>
                 </motion.div>
               </div>

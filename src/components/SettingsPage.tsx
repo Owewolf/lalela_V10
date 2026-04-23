@@ -198,6 +198,78 @@ const NotificationToggleRow: React.FC<{ onNavigate: () => void }> = ({ onNavigat
   );
 };
 
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  wrapperClassName?: string;
+  backdropClassName?: string;
+  panelClassName: string;
+  backdropPosition?: 'fixed' | 'absolute';
+  panelScale?: number;
+}
+
+const SettingsModal: React.FC<SettingsModalProps> = ({
+  isOpen,
+  onClose,
+  children,
+  wrapperClassName,
+  backdropClassName,
+  panelClassName,
+  backdropPosition = 'fixed',
+  panelScale = 0.9,
+}) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div
+          className={cn(
+            'fixed inset-0 z-[100] flex items-center justify-center',
+            wrapperClassName
+          )}
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className={cn(
+              backdropPosition === 'absolute' ? 'absolute inset-0' : 'fixed inset-0',
+              'bg-black/60 backdrop-blur-sm',
+              backdropClassName
+            )}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: panelScale, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: panelScale, y: 20 }}
+            className={panelClassName}
+          >
+            {children}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const SETTINGS_FIELD_LABEL_CLASS = 'text-xs font-bold uppercase tracking-widest text-outline ml-1';
+const SETTINGS_INPUT_CLASS =
+  'w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all';
+
+const SettingsFormField: React.FC<{
+  label: string;
+  children: React.ReactNode;
+  hint?: React.ReactNode;
+  className?: string;
+}> = ({ label, children, hint, className }) => (
+  <div className={cn('space-y-2', className)}>
+    <label className={SETTINGS_FIELD_LABEL_CLASS}>{label}</label>
+    {children}
+    {hint}
+  </div>
+);
+
 interface SettingsPageProps {
   onNavigateToAdmin: () => void;
   onNavigateToAccountSecurity: () => void;
@@ -211,6 +283,53 @@ interface SettingsPageProps {
 }
 
 type CharitySubView = 'list' | 'add' | 'edit' | 'suggestions';
+
+interface PendingBusinessSavePayload {
+  businessId: string | null;
+  businessData: {
+    name: string;
+    category: string;
+    subcategory: string;
+    description: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    contactPhone: string;
+    contactEmail: string;
+    charityId?: string;
+    charityPercentage?: number;
+    status: 'ACTIVE';
+  };
+}
+
+interface PendingCharitySavePayload {
+  mode: 'add' | 'edit';
+  selectedCharityId?: string;
+  selectedCharityCreatedAt?: Charity['createdAt'];
+  charityData: {
+    community_id: string;
+    name: string;
+    description: string;
+    category: CharityCategory;
+    percentage: number;
+    latitude: number;
+    longitude: number;
+    location_name: string;
+    contactPhone: string;
+    contactEmail: string;
+    website: string;
+    logo: string;
+    coverImage: string;
+    tags: string[];
+    isVerified: boolean;
+    isFeatured: boolean;
+    urgency: CharityUrgency;
+    status: CharityStatus;
+    linkedBusinessIds: string[];
+    fundraisingGoal?: number;
+    campaignCompleted: boolean;
+  };
+}
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ 
   onNavigateToAdmin,
@@ -269,6 +388,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     suggested_donation_amount: number;
     website: string;
   } | null>(null);
+  const [pendingBusinessSavePayload, setPendingBusinessSavePayload] = React.useState<PendingBusinessSavePayload | null>(null);
+  const [showBusinessSaveConfirmation, setShowBusinessSaveConfirmation] = React.useState(false);
+  const [isSubmittingBusinessSave, setIsSubmittingBusinessSave] = React.useState(false);
+  const [pendingBusinessDeleteId, setPendingBusinessDeleteId] = React.useState<string | null>(null);
+  const [pendingBusinessDeleteName, setPendingBusinessDeleteName] = React.useState('');
+  const [isDeletingBusiness, setIsDeletingBusiness] = React.useState(false);
+  const [pendingCharitySavePayload, setPendingCharitySavePayload] = React.useState<PendingCharitySavePayload | null>(null);
+  const [showCharitySaveConfirmation, setShowCharitySaveConfirmation] = React.useState(false);
+  const [isSubmittingCharitySave, setIsSubmittingCharitySave] = React.useState(false);
+  const [pendingCharityDeleteId, setPendingCharityDeleteId] = React.useState<string | null>(null);
+  const [pendingCharityDeleteName, setPendingCharityDeleteName] = React.useState('');
+  const [isDeletingCharity, setIsDeletingCharity] = React.useState(false);
+  const [pendingCommunityName, setPendingCommunityName] = React.useState<string | null>(null);
+  const [showCreateCommunityConfirmation, setShowCreateCommunityConfirmation] = React.useState(false);
+  const [isSubmittingCommunityCreate, setIsSubmittingCommunityCreate] = React.useState(false);
   const suggestCharityFormRef = useRef<HTMLFormElement | null>(null);
 
   React.useEffect(() => {
@@ -353,6 +487,203 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
+  const handlePrepareBusinessSaveSubmission = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const businessData: PendingBusinessSavePayload['businessData'] = {
+      name: formData.get('name') as string,
+      category: formData.get('category') as string,
+      subcategory: formData.get('subcategory') as string,
+      description: formData.get('description') as string,
+      address: formData.get('address') as string,
+      latitude: parseFloat(formData.get('latitude') as string) || (userProfile?.defaultLocation?.latitude || currentCommunity?.coverageArea?.latitude || -26.2041),
+      longitude: parseFloat(formData.get('longitude') as string) || (userProfile?.defaultLocation?.longitude || currentCommunity?.coverageArea?.longitude || 28.0473),
+      contactPhone: formData.get('phone') as string,
+      contactEmail: formData.get('email') as string,
+      charityId: (formData.get('charityId') as string) || undefined,
+      charityPercentage: formData.get('charityPercentage') ? parseFloat(formData.get('charityPercentage') as string) : undefined,
+      status: 'ACTIVE',
+    };
+
+    setPendingBusinessSavePayload({
+      businessId: editingBusinessId,
+      businessData,
+    });
+    setShowBusinessSaveConfirmation(true);
+  };
+
+  const handleConfirmBusinessSave = async () => {
+    if (!pendingBusinessSavePayload || isSubmittingBusinessSave) return;
+
+    setIsSubmittingBusinessSave(true);
+    try {
+      if (pendingBusinessSavePayload.businessId) {
+        const existing = userBusinesses.find(b => b.id === pendingBusinessSavePayload.businessId);
+        if (existing) {
+          await updateUserBusiness({ ...existing, ...pendingBusinessSavePayload.businessData });
+        }
+      } else {
+        await addUserBusiness({
+          ...pendingBusinessSavePayload.businessData,
+          image: `https://picsum.photos/seed/${Math.random()}/400/400`,
+          owner_id: user?.uid || '',
+          communityIds: [currentCommunity?.id || ''],
+        });
+      }
+
+      setShowBusinessSaveConfirmation(false);
+      setPendingBusinessSavePayload(null);
+      setIsAddingBusiness(false);
+      setEditingBusinessId(null);
+    } catch (error) {
+      console.error('Business save failed:', error);
+    } finally {
+      setIsSubmittingBusinessSave(false);
+    }
+  };
+
+  const handlePrepareCharitySaveSubmission = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const rawFundraisingGoal = (formData.get('fundraisingGoal') as string)?.trim();
+    const charityData: PendingCharitySavePayload['charityData'] = {
+      community_id: currentCommunity?.id || '',
+      name: formData.get('name') as string,
+      description: formData.get('description') as string,
+      category: formData.get('category') as CharityCategory,
+      percentage: Number(formData.get('percentage')),
+      latitude: Number(formData.get('latitude')),
+      longitude: Number(formData.get('longitude')),
+      location_name: formData.get('location_name') as string,
+      contactPhone: formData.get('contactPhone') as string,
+      contactEmail: formData.get('contactEmail') as string,
+      website: formData.get('website') as string,
+      logo: formData.get('logo') as string,
+      coverImage: formData.get('coverImage') as string,
+      tags: (formData.get('tags') as string).split(',').map(t => t.trim()),
+      isVerified: formData.get('isVerified') === 'on',
+      isFeatured: formData.get('isFeatured') === 'on',
+      urgency: formData.get('urgency') as CharityUrgency,
+      status: 'Active',
+      linkedBusinessIds: selectedCharity?.linkedBusinessIds || [],
+      fundraisingGoal: rawFundraisingGoal ? Number(rawFundraisingGoal) : undefined,
+      campaignCompleted: selectedCharity?.campaignCompleted || false,
+    };
+
+    setPendingCharitySavePayload({
+      mode: charitySubView === 'add' ? 'add' : 'edit',
+      selectedCharityId: selectedCharity?.id,
+      selectedCharityCreatedAt: selectedCharity?.createdAt,
+      charityData,
+    });
+    setShowCharitySaveConfirmation(true);
+  };
+
+  const handleConfirmCharitySave = async () => {
+    if (!pendingCharitySavePayload || isSubmittingCharitySave) return;
+
+    const payload = pendingCharitySavePayload;
+    setIsSubmittingCharitySave(true);
+
+    try {
+      if (payload.charityData.isFeatured) {
+        const otherFeatured = charities.filter(c =>
+          c.isFeatured &&
+          c.id !== payload.selectedCharityId &&
+          c.community_id === payload.charityData.community_id
+        );
+        for (const c of otherFeatured) {
+          await updateCharity({ ...c, isFeatured: false });
+        }
+      }
+
+      if (payload.mode === 'add') {
+        await addCharity(payload.charityData);
+      } else if (payload.selectedCharityId) {
+        await updateCharity({
+          ...payload.charityData,
+          id: payload.selectedCharityId,
+          createdAt: payload.selectedCharityCreatedAt,
+        });
+      }
+
+      setShowCharitySaveConfirmation(false);
+      setPendingCharitySavePayload(null);
+      setCharitySubView('list');
+      setSelectedCharity(null);
+    } catch (error) {
+      console.error('Charity save failed:', error);
+    } finally {
+      setIsSubmittingCharitySave(false);
+    }
+  };
+
+  const handlePrepareCreateCommunitySubmission = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+    const name = (formData.get('name') as string)?.trim();
+    if (!name) {
+      setError('Community name is required.');
+      return;
+    }
+
+    setPendingCommunityName(name);
+    setShowCreateCommunityConfirmation(true);
+  };
+
+  const handleConfirmCreateCommunity = async () => {
+    if (!pendingCommunityName || isSubmittingCommunityCreate) return;
+
+    setIsSubmittingCommunityCreate(true);
+    setError(null);
+    try {
+      const newCommunityId = await createCommunity(pendingCommunityName);
+      setShowCreateCommunityConfirmation(false);
+      setPendingCommunityName(null);
+      setIsCreatingCommunity(false);
+
+      if (newCommunityId) {
+        onNavigateToCommunityDashboard(newCommunityId, 'Admin', { guidedSetup: true });
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create community.');
+      setShowCreateCommunityConfirmation(false);
+    } finally {
+      setIsSubmittingCommunityCreate(false);
+    }
+  };
+
+  const handleConfirmDeleteBusiness = async () => {
+    if (!pendingBusinessDeleteId || isDeletingBusiness) return;
+
+    setIsDeletingBusiness(true);
+    try {
+      await removeUserBusiness(pendingBusinessDeleteId);
+      setPendingBusinessDeleteId(null);
+      setPendingBusinessDeleteName('');
+    } catch (error) {
+      console.error('Business delete failed:', error);
+    } finally {
+      setIsDeletingBusiness(false);
+    }
+  };
+
+  const handleConfirmDeleteCharity = async () => {
+    if (!pendingCharityDeleteId || isDeletingCharity) return;
+
+    setIsDeletingCharity(true);
+    try {
+      await removeCharity(pendingCharityDeleteId);
+      setPendingCharityDeleteId(null);
+      setPendingCharityDeleteName('');
+    } catch (error) {
+      console.error('Charity delete failed:', error);
+    } finally {
+      setIsDeletingCharity(false);
+    }
+  };
+
   const enabledCategories = React.useMemo(() => {
     const enabledCategoryIds = currentCommunity?.enabledCategories;
     if (!enabledCategoryIds) return BUSINESS_CATEGORIES;
@@ -390,6 +721,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const hasTrialCommunity = communities.some(c => c.owner_id === userProfile?.id && c.type === 'TRIAL');
   const canCreateNewCommunity = !hasTrialCommunity;
 
+  const pendingCharitySuggestions = React.useMemo(
+    () => charitySuggestions.filter(s => s.status === 'pending'),
+    [charitySuggestions]
+  );
+
+  const activeCharities = React.useMemo(
+    () => charities.filter(c => c.status !== 'Archived'),
+    [charities]
+  );
+
+  const activeBusinesses = React.useMemo(
+    () => userBusinesses.filter(b => b.status !== 'INACTIVE'),
+    [userBusinesses]
+  );
+
   const isPurelyInvited = communities.length > 0 && !communities.some(c => c.owner_id === userProfile?.id);
   const isUnlicensedPlatformMember = isPurelyInvited && userProfile?.license_status === 'UNLICENSED';
 
@@ -408,14 +754,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
 
           <div className="space-y-6">
-            {charitySuggestions.filter(s => s.status === 'pending').length === 0 ? (
+            {pendingCharitySuggestions.length === 0 ? (
               <div className="text-center py-12 bg-surface-container-low rounded-[2.5rem]">
                 <HeartHandshake className="w-12 h-12 text-outline/20 mx-auto mb-4" />
                 <p className="text-outline font-bold">No pending suggestions</p>
                 <p className="text-xs text-outline/60">Community members haven't suggested any charities yet.</p>
               </div>
             ) : (
-              charitySuggestions.filter(s => s.status === 'pending').map((suggestion) => (
+              pendingCharitySuggestions.map((suggestion) => (
                 <div key={suggestion.id} className="bg-surface-container-lowest p-6 rounded-[2.5rem] border border-outline-variant/10 shadow-sm space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
@@ -586,53 +932,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
 
           <form 
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const rawFundraisingGoal = (formData.get('fundraisingGoal') as string)?.trim();
-              const charityData = {
-                community_id: currentCommunity?.id || '',
-                name: formData.get('name') as string,
-                description: formData.get('description') as string,
-                category: formData.get('category') as CharityCategory,
-                percentage: Number(formData.get('percentage')),
-                latitude: Number(formData.get('latitude')),
-                longitude: Number(formData.get('longitude')),
-                location_name: formData.get('location_name') as string,
-                contactPhone: formData.get('contactPhone') as string,
-                contactEmail: formData.get('contactEmail') as string,
-                website: formData.get('website') as string,
-                logo: formData.get('logo') as string,
-                coverImage: formData.get('coverImage') as string,
-                tags: (formData.get('tags') as string).split(',').map(t => t.trim()),
-                isVerified: formData.get('isVerified') === 'on',
-                isFeatured: formData.get('isFeatured') === 'on',
-                urgency: formData.get('urgency') as CharityUrgency,
-                status: 'Active' as CharityStatus,
-                linkedBusinessIds: selectedCharity?.linkedBusinessIds || [],
-                fundraisingGoal: rawFundraisingGoal ? Number(rawFundraisingGoal) : undefined,
-                campaignCompleted: selectedCharity?.campaignCompleted || false
-              };
-
-              if (charityData.isFeatured) {
-                const otherFeatured = charities.filter(c => 
-                  c.isFeatured && 
-                  c.id !== selectedCharity?.id && 
-                  c.community_id === charityData.community_id
-                );
-                for (const c of otherFeatured) {
-                  await updateCharity({ ...c, isFeatured: false });
-                }
-              }
-
-              if (charitySubView === 'add') {
-                await addCharity(charityData);
-              } else if (selectedCharity) {
-                await updateCharity({ ...charityData, id: selectedCharity.id, createdAt: selectedCharity.createdAt });
-              }
-              setCharitySubView('list');
-              setSelectedCharity(null);
-            }}
+            onSubmit={handlePrepareCharitySaveSubmission}
             className="grid grid-cols-1 gap-8"
           >
             <div className="space-y-6">
@@ -787,7 +1087,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
 
         {/* Suggestions Queue Link */}
-        {charitySuggestions.filter(s => s.status === 'pending').length > 0 && (
+        {pendingCharitySuggestions.length > 0 && (
           <motion.button
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -801,7 +1101,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <div className="text-left">
                 <p className="text-sm font-bold text-amber-700">Pending Suggestions</p>
                 <p className="text-[10px] text-amber-600 font-medium">
-                  {charitySuggestions.filter(s => s.status === 'pending').length} new charity suggestions from members
+                  {pendingCharitySuggestions.length} new charity suggestions from members
                 </p>
               </div>
             </div>
@@ -810,7 +1110,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         )}
 
         <div className="grid grid-cols-1 gap-6">
-          {charities.filter(c => c.status !== 'Archived').map((charity) => (
+          {activeCharities.map((charity) => (
             <motion.div 
               key={charity.id}
               layoutId={charity.id}
@@ -879,7 +1179,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     Edit
                   </button>
                   <button 
-                    onClick={() => removeCharity(charity.id)}
+                    onClick={() => {
+                      setPendingCharityDeleteId(charity.id);
+                      setPendingCharityDeleteName(charity.name);
+                    }}
                     className="p-2 rounded-xl bg-error/5 text-error hover:bg-error/10 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -889,7 +1192,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </motion.div>
           ))}
 
-          {charities.length === 0 && (
+          {activeCharities.length === 0 && (
             <div className="col-span-full py-20 text-center space-y-4">
               <div className="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center mx-auto text-outline/30">
                 <Heart className="w-10 h-10" />
@@ -1157,7 +1460,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
 
         <div className="space-y-4">
-          {userBusinesses.filter(b => b.status !== 'INACTIVE').map((biz) => (
+          {activeBusinesses.map((biz) => (
             <div key={biz.id} className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-container overflow-hidden relative group">
               <div className="flex items-start gap-4 mb-6">
                 <div className="w-16 h-16 rounded-2xl overflow-hidden bg-surface-container-high shrink-0 shadow-sm">
@@ -1178,7 +1481,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         <Edit className="w-4 h-4" />
                       </button>
                       <button 
-                        onClick={() => removeUserBusiness(biz.id)}
+                        onClick={() => {
+                          setPendingBusinessDeleteId(biz.id);
+                          setPendingBusinessDeleteName(biz.name);
+                        }}
                         className="p-2 rounded-full hover:bg-error/10 text-outline hover:text-error transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1226,7 +1532,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
           ))}
 
-          {userBusinesses.filter(b => b.status !== 'INACTIVE').length === 0 && (
+          {activeBusinesses.length === 0 && (
             <div className="bg-surface-container-low/50 border-2 border-dashed border-outline-variant/30 rounded-3xl p-12 flex flex-col items-center justify-center text-center gap-3">
               <Store className="w-12 h-12 text-outline-variant" />
               <div>
@@ -1366,148 +1672,244 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       {/* Suggest Charity Modal (for Members) */}
-      <AnimatePresence>
-        {isSuggestingCharity && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-3 sm:px-6 overflow-y-auto py-6 sm:py-10">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+      <SettingsModal
+        isOpen={isSuggestingCharity}
+        onClose={handleCloseSuggestCharity}
+        wrapperClassName="px-3 sm:px-6 overflow-y-auto py-6 sm:py-10"
+        panelClassName="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
+        panelScale={0.95}
+      >
+        <div className="p-5 sm:p-8">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h2 className="text-2xl font-headline font-bold text-primary">Suggest a Charity</h2>
+              <p className="text-xs text-on-surface-variant mt-1">Propose a cause you care about for your community.</p>
+            </div>
+            <button
               onClick={handleCloseSuggestCharity}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
+              className="p-2 hover:bg-surface-container-low rounded-full transition-colors"
             >
-              <div className="p-5 sm:p-8">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h2 className="text-2xl font-headline font-bold text-primary">Suggest a Charity</h2>
-                    <p className="text-xs text-on-surface-variant mt-1">Propose a cause you care about for your community.</p>
-                  </div>
-                  <button 
-                    onClick={handleCloseSuggestCharity}
-                    className="p-2 hover:bg-surface-container-low rounded-full transition-colors"
-                  >
-                    <X className="w-5 h-5 text-outline" />
-                  </button>
-                </div>
-
-                <form 
-                  ref={suggestCharityFormRef}
-                  onSubmit={handlePrepareSuggestCharitySubmission}
-                  className="space-y-4"
-                >
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Charity Name</label>
-                    <input 
-                      name="name" 
-                      required 
-                      placeholder="e.g. Rural Water Initiative"
-                      className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Description</label>
-                    <textarea 
-                      name="description" 
-                      required 
-                      rows={3}
-                      placeholder="What is their mission?"
-                      className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all resize-none" 
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Suggested Percentage (%)</label>
-                      <input 
-                        name="amount" 
-                        type="number"
-                        required
-                        min={1}
-                        max={100}
-                        step={1}
-                        placeholder="e.g. 5"
-                        className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all" 
-                      />
-                      <p className="text-[10px] text-outline/80 mt-1 ml-1">Enter a whole number from 1 to 100.</p>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Website (Optional)</label>
-                      <input 
-                        name="website" 
-                        type="url"
-                        placeholder="https://..."
-                        className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all" 
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Reason for Suggestion</label>
-                    <textarea 
-                      name="reason" 
-                      required 
-                      rows={2}
-                      placeholder="Why should we support them?"
-                      className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all resize-none" 
-                    />
-                  </div>
-                  {suggestionError && (
-                    <p className="text-xs text-error font-semibold">{suggestionError}</p>
-                  )}
-                  {suggestionSuccess && (
-                    <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-emerald-700">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <p className="text-xs font-semibold">{suggestionSuccess}</p>
-                    </div>
-                  )}
-                  <div className="pt-4 flex gap-3">
-                    <button 
-                      type="button"
-                      onClick={handleCloseSuggestCharity}
-                      className="flex-1 py-3.5 rounded-2xl bg-surface-container-low text-outline font-bold hover:bg-surface-container-high transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      type="submit"
-                      disabled={isSubmittingSuggestion}
-                      className={cn(
-                        "flex-[2] py-3.5 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 transition-all",
-                        isSubmittingSuggestion ? "opacity-60 cursor-not-allowed" : "hover:scale-[1.02] active:scale-95"
-                      )}
-                    >
-                      {isSubmittingSuggestion ? 'Submitting...' : 'Submit Suggestion'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-
-            <PostConfirmationModal
-              isOpen={showSuggestConfirmation}
-              ctaLabel="Send Suggestion"
-              postType="Charity Suggestion"
-              communityName={currentCommunity?.name || 'Your Community'}
-              title={pendingSuggestionPayload?.name || ''}
-              themeColor="bg-primary"
-              customTitle="Confirm Charity Suggestion"
-              customMessage="Confirm you want to send your charity suggestion."
-              cancelLabel="No, cancel"
-              confirmLabel={isSubmittingSuggestion ? 'Sending...' : 'Yes, confirm'}
-              confirmDisabled={isSubmittingSuggestion}
-              onConfirm={handleConfirmSuggestCharity}
-              onCancel={() => {
-                if (isSubmittingSuggestion) return;
-                setShowSuggestConfirmation(false);
-              }}
-            />
+              <X className="w-5 h-5 text-outline" />
+            </button>
           </div>
-        )}
-      </AnimatePresence>
+
+          <form
+            ref={suggestCharityFormRef}
+            onSubmit={handlePrepareSuggestCharitySubmission}
+            className="space-y-4"
+          >
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Charity Name</label>
+              <input
+                name="name"
+                required
+                placeholder="e.g. Rural Water Initiative"
+                className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Description</label>
+              <textarea
+                name="description"
+                required
+                rows={3}
+                placeholder="What is their mission?"
+                className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Suggested Percentage (%)</label>
+                <input
+                  name="amount"
+                  type="number"
+                  required
+                  min={1}
+                  max={100}
+                  step={1}
+                  placeholder="e.g. 5"
+                  className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+                <p className="text-[10px] text-outline/80 mt-1 ml-1">Enter a whole number from 1 to 100.</p>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Website (Optional)</label>
+                <input
+                  name="website"
+                  type="url"
+                  placeholder="https://..."
+                  className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-outline mb-1.5 ml-1">Reason for Suggestion</label>
+              <textarea
+                name="reason"
+                required
+                rows={2}
+                placeholder="Why should we support them?"
+                className="w-full px-4 py-3 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+              />
+            </div>
+            {suggestionError && (
+              <p className="text-xs text-error font-semibold">{suggestionError}</p>
+            )}
+            {suggestionSuccess && (
+              <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-emerald-700">
+                <CheckCircle2 className="w-4 h-4" />
+                <p className="text-xs font-semibold">{suggestionSuccess}</p>
+              </div>
+            )}
+            <div className="pt-4 flex gap-3">
+              <button
+                type="button"
+                onClick={handleCloseSuggestCharity}
+                className="flex-1 py-3.5 rounded-2xl bg-surface-container-low text-outline font-bold hover:bg-surface-container-high transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingSuggestion}
+                className={cn(
+                  'flex-[2] py-3.5 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 transition-all',
+                  isSubmittingSuggestion ? 'opacity-60 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-95'
+                )}
+              >
+                {isSubmittingSuggestion ? 'Submitting...' : 'Submit Suggestion'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <PostConfirmationModal
+          isOpen={showSuggestConfirmation}
+          ctaLabel="Send Suggestion"
+          postType="Charity Suggestion"
+          communityName={currentCommunity?.name || 'Your Community'}
+          title={pendingSuggestionPayload?.name || ''}
+          themeColor="bg-primary"
+          customTitle="Confirm Charity Suggestion"
+          customMessage="Confirm you want to send your charity suggestion."
+          cancelLabel="No, cancel"
+          confirmLabel={isSubmittingSuggestion ? 'Sending...' : 'Yes, confirm'}
+          confirmDisabled={isSubmittingSuggestion}
+          onConfirm={handleConfirmSuggestCharity}
+          onCancel={() => {
+            if (isSubmittingSuggestion) return;
+            setShowSuggestConfirmation(false);
+          }}
+        />
+      </SettingsModal>
+
+      <PostConfirmationModal
+        isOpen={showBusinessSaveConfirmation}
+        ctaLabel={pendingBusinessSavePayload?.businessId ? 'Save Business' : 'Create Business'}
+        postType="Business"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={pendingBusinessSavePayload?.businessData.name || ''}
+        themeColor="bg-primary"
+        customTitle={pendingBusinessSavePayload?.businessId ? 'Confirm Business Changes' : 'Confirm Business Creation'}
+        customMessage={
+          pendingBusinessSavePayload?.businessId
+            ? 'Confirm you want to save these business updates.'
+            : 'Confirm you want to create this business profile.'
+        }
+        cancelLabel="No, cancel"
+        confirmLabel={isSubmittingBusinessSave ? 'Saving...' : 'Yes, confirm'}
+        confirmDisabled={isSubmittingBusinessSave}
+        onConfirm={handleConfirmBusinessSave}
+        onCancel={() => {
+          if (isSubmittingBusinessSave) return;
+          setShowBusinessSaveConfirmation(false);
+          setPendingBusinessSavePayload(null);
+        }}
+      />
+
+      <PostConfirmationModal
+        isOpen={showCharitySaveConfirmation}
+        ctaLabel={pendingCharitySavePayload?.mode === 'add' ? 'Create Charity' : 'Save Charity'}
+        postType="Charity"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={pendingCharitySavePayload?.charityData.name || ''}
+        themeColor="bg-emerald-600"
+        customTitle={pendingCharitySavePayload?.mode === 'add' ? 'Confirm Charity Creation' : 'Confirm Charity Changes'}
+        customMessage={
+          pendingCharitySavePayload?.mode === 'add'
+            ? 'Confirm you want to create this charity for your community.'
+            : 'Confirm you want to save these charity updates.'
+        }
+        cancelLabel="No, cancel"
+        confirmLabel={isSubmittingCharitySave ? 'Saving...' : 'Yes, confirm'}
+        confirmDisabled={isSubmittingCharitySave}
+        onConfirm={handleConfirmCharitySave}
+        onCancel={() => {
+          if (isSubmittingCharitySave) return;
+          setShowCharitySaveConfirmation(false);
+          setPendingCharitySavePayload(null);
+        }}
+      />
+
+      <PostConfirmationModal
+        isOpen={showCreateCommunityConfirmation}
+        ctaLabel="Launch Community"
+        postType="Community"
+        communityName={currentCommunity?.name || 'Your Account'}
+        title={pendingCommunityName || ''}
+        themeColor="bg-blue-600"
+        customTitle="Confirm Community Launch"
+        customMessage="Confirm you want to create and launch this community in trial mode."
+        cancelLabel="No, cancel"
+        confirmLabel={isSubmittingCommunityCreate ? 'Launching...' : 'Yes, launch'}
+        confirmDisabled={isSubmittingCommunityCreate}
+        onConfirm={handleConfirmCreateCommunity}
+        onCancel={() => {
+          if (isSubmittingCommunityCreate) return;
+          setShowCreateCommunityConfirmation(false);
+          setPendingCommunityName(null);
+        }}
+      />
+
+      <PostConfirmationModal
+        isOpen={!!pendingBusinessDeleteId}
+        ctaLabel="Delete Business"
+        postType="Business"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={pendingBusinessDeleteName}
+        themeColor="bg-error"
+        customTitle="Confirm Business Deletion"
+        customMessage="This action cannot be undone. Confirm you want to permanently delete this business profile."
+        cancelLabel="No, keep it"
+        confirmLabel={isDeletingBusiness ? 'Deleting...' : 'Yes, delete'}
+        confirmDisabled={isDeletingBusiness}
+        onConfirm={handleConfirmDeleteBusiness}
+        onCancel={() => {
+          if (isDeletingBusiness) return;
+          setPendingBusinessDeleteId(null);
+          setPendingBusinessDeleteName('');
+        }}
+      />
+
+      <PostConfirmationModal
+        isOpen={!!pendingCharityDeleteId}
+        ctaLabel="Delete Charity"
+        postType="Charity"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={pendingCharityDeleteName}
+        themeColor="bg-error"
+        customTitle="Confirm Charity Deletion"
+        customMessage="This action cannot be undone. Confirm you want to permanently delete this charity."
+        cancelLabel="No, keep it"
+        confirmLabel={isDeletingCharity ? 'Deleting...' : 'Yes, delete'}
+        confirmDisabled={isDeletingCharity}
+        onConfirm={handleConfirmDeleteCharity}
+        onCancel={() => {
+          if (isDeletingCharity) return;
+          setPendingCharityDeleteId(null);
+          setPendingCharityDeleteName('');
+        }}
+      />
 
       {/* Logout Action */}
       <button 
@@ -1519,26 +1921,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       </button>
 
       {/* Add Business Modal */}
-      <AnimatePresence>
-        {isAddingBusiness && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-3 sm:px-6 overflow-y-auto py-6 sm:py-10">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                setIsAddingBusiness(false);
-                setEditingBusinessId(null);
-              }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-surface rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-hidden my-auto"
-            >
-              <div className="flex items-center justify-between mb-8">
+      <SettingsModal
+        isOpen={isAddingBusiness}
+        onClose={() => {
+          setIsAddingBusiness(false);
+          setEditingBusinessId(null);
+        }}
+        wrapperClassName="px-3 sm:px-6 overflow-y-auto py-6 sm:py-10"
+        panelClassName="relative w-full max-w-lg bg-surface rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-hidden my-auto"
+      >
+        <div className="flex items-center justify-between mb-8">
                 <h3 className="text-2xl font-bold font-headline text-primary">
                   {editingBusinessId ? 'Edit Business' : 'Add Business'}
                 </h3>
@@ -1554,75 +1946,39 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
 
               <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const businessData = {
-                    name: formData.get('name') as string,
-                    category: formData.get('category') as string,
-                    subcategory: formData.get('subcategory') as string,
-                    description: formData.get('description') as string,
-                    address: formData.get('address') as string,
-                    latitude: parseFloat(formData.get('latitude') as string) || (userProfile?.defaultLocation?.latitude || currentCommunity?.coverageArea?.latitude || -26.2041),
-                    longitude: parseFloat(formData.get('longitude') as string) || (userProfile?.defaultLocation?.longitude || currentCommunity?.coverageArea?.longitude || 28.0473),
-                    contactPhone: formData.get('phone') as string,
-                    contactEmail: formData.get('email') as string,
-                    charityId: formData.get('charityId') as string || undefined,
-                    charityPercentage: formData.get('charityPercentage') ? parseFloat(formData.get('charityPercentage') as string) : undefined,
-                    status: 'ACTIVE' as const
-                  };
-
-                  if (editingBusinessId) {
-                    const existing = userBusinesses.find(b => b.id === editingBusinessId);
-                    if (existing) {
-                      updateUserBusiness({ ...existing, ...businessData });
-                    }
-                  } else {
-                    addUserBusiness({
-                      ...businessData,
-                      image: `https://picsum.photos/seed/${Math.random()}/400/400`,
-                      owner_id: user?.uid || '',
-                      communityIds: [currentCommunity?.id || ''],
-                    });
-                  }
-                  setIsAddingBusiness(false);
-                  setEditingBusinessId(null);
-                }}
+                onSubmit={handlePrepareBusinessSaveSubmission}
                 className="space-y-6 max-h-[70vh] overflow-y-auto pr-1 sm:pr-2 custom-scrollbar"
               >
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Business Name</label>
+                <SettingsFormField label="Business Name">
                   <input 
                     name="name"
                     required
                     defaultValue={editingBusinessId ? userBusinesses.find(b => b.id === editingBusinessId)?.name : ''}
                     placeholder="e.g. Thabo's Pottery"
-                    className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                    className={SETTINGS_INPUT_CLASS}
                   />
-                </div>
+                </SettingsFormField>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Category</label>
+                  <SettingsFormField label="Category">
                     <select 
                       name="category"
                       required
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                      className={SETTINGS_INPUT_CLASS}
                     >
                       {enabledCategories.map(cat => (
                         <option key={cat.id} value={cat.label}>{cat.label}</option>
                       ))}
                     </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Subcategory</label>
+                  </SettingsFormField>
+                  <SettingsFormField label="Subcategory">
                     <select 
                       name="subcategory"
                       required
                       defaultValue={editingBusinessId ? userBusinesses.find(b => b.id === editingBusinessId)?.subcategory : ''}
-                      className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                      className={SETTINGS_INPUT_CLASS}
                     >
                       {enabledCategories.find(c => c.label === selectedCategory)?.types.map(type => (
                         <option key={type} value={type}>
@@ -1630,16 +1986,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </option>
                       ))}
                     </select>
-                  </div>
+                  </SettingsFormField>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Linked Charity (Optional)</label>
+                  <SettingsFormField
+                    label="Linked Charity (Optional)"
+                    hint={
+                      <p className="text-[10px] text-on-surface-variant px-1">
+                        Linking a charity shows your support and impact in the community.
+                      </p>
+                    }
+                  >
                     <select 
                       name="charityId"
                       defaultValue={editingBusinessId ? userBusinesses.find(b => b.id === editingBusinessId)?.charityId : ''}
-                      className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                      className={SETTINGS_INPUT_CLASS}
                     >
                       <option value="">No linked charity</option>
                       {charities.map(charity => (
@@ -1648,13 +2010,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </option>
                       ))}
                     </select>
-                    <p className="text-[10px] text-on-surface-variant px-1">
-                      Linking a charity shows your support and impact in the community.
-                    </p>
-                  </div>
+                  </SettingsFormField>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Charity Percentage</label>
+                  <SettingsFormField
+                    label="Charity Percentage"
+                    hint={
+                      <p className="text-[10px] text-primary px-1 font-medium">
+                        You are pledging this percentage of your sales to the featured charity!
+                      </p>
+                    }
+                  >
                     <input 
                       type="number"
                       name="charityPercentage"
@@ -1663,29 +2028,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       step="0.1"
                       defaultValue={editingBusinessId ? userBusinesses.find(b => b.id === editingBusinessId)?.charityPercentage : ''}
                       placeholder="e.g. 5"
-                      className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                      className={SETTINGS_INPUT_CLASS}
                     />
-                    <p className="text-[10px] text-primary px-1 font-medium">
-                      You are pledging this percentage of your sales to the featured charity!
-                    </p>
-                  </div>
+                  </SettingsFormField>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Address</label>
+                <SettingsFormField label="Address">
                   <AddressAutocomplete 
                     defaultValue={editingBusinessId ? userBusinesses.find(b => b.id === editingBusinessId)?.address || '' : (userProfile?.address || userProfile?.defaultLocation?.name || '')}
                     onSelect={(address, lat, lng) => {
                       setFormLat(lat);
                       setFormLng(lng);
                     }}
-                    className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                    className={SETTINGS_INPUT_CLASS}
                   />
-                </div>
+                </SettingsFormField>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Latitude</label>
+                  <SettingsFormField label="Latitude">
                     <input 
                       name="latitude"
                       type="number"
@@ -1693,11 +2053,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       value={formLat}
                       onChange={(e) => setFormLat(e.target.value)}
                       required
-                      className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                      className={SETTINGS_INPUT_CLASS}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Longitude</label>
+                  </SettingsFormField>
+                  <SettingsFormField label="Longitude">
                     <input 
                       name="longitude"
                       type="number"
@@ -1705,44 +2064,41 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       value={formLng}
                       onChange={(e) => setFormLng(e.target.value)}
                       required
-                      className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                      className={SETTINGS_INPUT_CLASS}
                     />
-                  </div>
+                  </SettingsFormField>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Phone</label>
+                  <SettingsFormField label="Phone">
                     <input 
                       name="phone"
                       defaultValue={editingBusinessId ? userBusinesses.find(b => b.id === editingBusinessId)?.contactPhone : ''}
                       placeholder="+27 82 123 4567"
-                      className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                      className={SETTINGS_INPUT_CLASS}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Email</label>
+                  </SettingsFormField>
+                  <SettingsFormField label="Email">
                     <input 
                       name="email"
                       type="email"
                       defaultValue={editingBusinessId ? userBusinesses.find(b => b.id === editingBusinessId)?.contactEmail : ''}
                       placeholder="hello@business.com"
-                      className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all"
+                      className={SETTINGS_INPUT_CLASS}
                     />
-                  </div>
+                  </SettingsFormField>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-outline ml-1">Description</label>
+                <SettingsFormField label="Description">
                   <textarea 
                     name="description"
                     required
                     rows={3}
                     defaultValue={editingBusinessId ? userBusinesses.find(b => b.id === editingBusinessId)?.description : ''}
                     placeholder="Tell the community about your business..."
-                    className="w-full bg-surface-container-low border-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-4 py-3 rounded-t-xl transition-all resize-none"
+                    className={cn(SETTINGS_INPUT_CLASS, 'resize-none')}
                   />
-                </div>
+                </SettingsFormField>
 
                 <button 
                   type="submit"
@@ -1751,64 +2107,39 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   {editingBusinessId ? 'Save Changes' : 'Create Business Profile'}
                 </button>
               </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      </SettingsModal>
 
       {/* Charity Management Modal */}
-      <AnimatePresence>
-        {isManagingCharity && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-3 sm:px-6 overflow-y-auto py-6 sm:py-10">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={handleCloseCharity}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-surface rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-hidden my-auto"
-            >
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-bold font-headline text-primary">Community Charity</h3>
-                <button 
-                  onClick={handleCloseCharity}
-                  className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
-                >
-                  <X className="w-6 h-6 text-outline" />
-                </button>
-              </div>
+      <SettingsModal
+        isOpen={isManagingCharity}
+        onClose={handleCloseCharity}
+        wrapperClassName="px-3 sm:px-6 overflow-y-auto py-6 sm:py-10"
+        panelClassName="relative w-full max-w-2xl bg-surface rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-hidden my-auto"
+      >
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-2xl font-bold font-headline text-primary">Community Charity</h3>
+          <button
+            onClick={handleCloseCharity}
+            className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
+          >
+            <X className="w-6 h-6 text-outline" />
+          </button>
+        </div>
 
-              <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                {renderCharityManagement()}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+        <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+          {renderCharityManagement()}
+        </div>
+      </SettingsModal>
 
       {/* Create Community Modal */}
-      <AnimatePresence>
-        {isCreatingCommunity && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-3 sm:px-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCreatingCommunity(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-surface rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-hidden"
-            >
-              <div className="flex items-center justify-between mb-8">
+      <SettingsModal
+        isOpen={isCreatingCommunity}
+        onClose={() => setIsCreatingCommunity(false)}
+        wrapperClassName="px-3 sm:px-6"
+        panelClassName="relative w-full max-w-md bg-surface rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-hidden"
+        backdropPosition="absolute"
+      >
+        <div className="flex items-center justify-between mb-8">
                 <h3 className="text-2xl font-bold font-headline text-primary">New Community</h3>
                 <button 
                   onClick={() => setIsCreatingCommunity(false)}
@@ -1819,22 +2150,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
 
               <form 
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setError(null);
-                  try {
-                    const formData = new FormData(e.currentTarget);
-                    const name = formData.get('name') as string;
-                    const newCommunityId = await createCommunity(name);
-                    setIsCreatingCommunity(false);
-                    // Route B: existing user — skip profile, go straight to guided community setup
-                    if (newCommunityId) {
-                      onNavigateToCommunityDashboard(newCommunityId, 'Admin', { guidedSetup: true });
-                    }
-                  } catch (err: any) {
-                    setError(err.message);
-                  }
-                }}
+                onSubmit={handlePrepareCreateCommunitySubmission}
                 className="space-y-6"
               >
                 <div className="space-y-2">
@@ -1867,10 +2183,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   </p>
                 )}
               </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      </SettingsModal>
     </main>
   );
 };

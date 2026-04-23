@@ -255,16 +255,15 @@ export const EmergencyHub: React.FC<EmergencyHubProps> = ({ emergencyPost, onBac
           </div>
         </div>
 
-        {/* Composer */}
-        <div className="p-4 bg-surface border-t border-outline-variant/10 pb-8">
-          <ChatComposer 
-            placeholder="Send a quick update..." 
-            onSend={(text) => sendMessage(text)}
-            onSendAttachment={(url, type) => sendMessage('', type, url)}
-            onSendLocation={handleSendLocation}
-            onTyping={() => {}}
-          />
-        </div>
+        {/* Floating composer — identical to ChatDetailPage */}
+        <ChatComposer
+          placeholder="Send a quick update..."
+          onSend={(text) => sendMessage(text)}
+          onSendAttachment={(url, type) => sendMessage('', type, url)}
+          onSendLocation={handleSendLocation}
+          onTyping={() => {}}
+          containerClassName="fixed left-3 right-3 z-40"
+        />
       </main>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Phone, KeyRound, Loader2, ArrowLeft } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useFirebase } from '../../context/FirebaseContext';
+import { PostConfirmationModal } from '../PostConfirmationModal';
 
 interface PhoneAuthProps {
   onSuccess?: (user: any) => Promise<void> | void;
@@ -14,6 +15,8 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError }) => {
   const [otpCode, setOtpCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'sendCode' | 'verifyCode' | null>(null);
 
   useEffect(() => {
     // Initialize reCAPTCHA when component mounts
@@ -24,8 +27,7 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError }) => {
     };
   }, [setupRecaptcha, clearPhoneAuth]);
 
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirmSendCode = async () => {
     setLocalError(null);
     setIsLoading(true);
     try {
@@ -37,11 +39,19 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError }) => {
       onError?.(msg);
     } finally {
       setIsLoading(false);
+      setShowConfirm(false);
+      setPendingAction(null);
     }
   };
 
-  const handleVerifyCode = async (e: React.FormEvent) => {
+  const handlePrepareSendCode = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || phoneNumber.length < 9) return;
+    setPendingAction('sendCode');
+    setShowConfirm(true);
+  };
+
+  const handleConfirmVerifyCode = async () => {
     setLocalError(null);
     setIsLoading(true);
     try {
@@ -54,7 +64,16 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError }) => {
       onError?.(msg);
     } finally {
       setIsLoading(false);
+      setShowConfirm(false);
+      setPendingAction(null);
     }
+  };
+
+  const handlePrepareVerifyCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLoading || otpCode.length !== 6) return;
+    setPendingAction('verifyCode');
+    setShowConfirm(true);
   };
 
   return (
@@ -68,7 +87,7 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError }) => {
       )}
 
       {!confirmationResult ? (
-        <form onSubmit={handleSendCode} className="space-y-4">
+        <form onSubmit={handlePrepareSendCode} className="space-y-4">
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">Mobile Number</label>
             <div className="relative">
@@ -94,7 +113,7 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError }) => {
           </button>
         </form>
       ) : (
-        <form onSubmit={handleVerifyCode} className="space-y-4">
+        <form onSubmit={handlePrepareVerifyCode} className="space-y-4">
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-outline ml-2">6-Digit Code</label>
             <div className="relative">
@@ -136,6 +155,40 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError }) => {
           </button>
         </form>
       )}
+
+      <PostConfirmationModal
+        isOpen={showConfirm}
+        ctaLabel={pendingAction === 'verifyCode' ? 'Verify Code' : 'Send SMS Code'}
+        postType={pendingAction === 'verifyCode' ? 'Phone Verification' : 'Phone Authentication'}
+        communityName="Lalela"
+        title={pendingAction === 'verifyCode' ? otpCode : phoneNumber}
+        themeColor="bg-primary"
+        customTitle={pendingAction === 'verifyCode' ? 'Confirm OTP Verification' : 'Confirm SMS Send'}
+        customMessage={
+          pendingAction === 'verifyCode'
+            ? 'Confirm you want to verify this one-time code.'
+            : 'Confirm you want to send an SMS verification code to this phone number.'
+        }
+        cancelLabel="No, cancel"
+        confirmLabel={
+          pendingAction === 'verifyCode'
+            ? (isLoading ? 'Verifying...' : 'Yes, verify')
+            : (isLoading ? 'Sending...' : 'Yes, send')
+        }
+        confirmDisabled={isLoading}
+        onConfirm={() => {
+          if (pendingAction === 'verifyCode') {
+            void handleConfirmVerifyCode();
+            return;
+          }
+          void handleConfirmSendCode();
+        }}
+        onCancel={() => {
+          if (isLoading) return;
+          setShowConfirm(false);
+          setPendingAction(null);
+        }}
+      />
     </div>
   );
 };

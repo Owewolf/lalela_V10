@@ -56,6 +56,7 @@ import { useGoogleMaps } from '../context/GoogleMapsContext';
 import { cn } from '../lib/utils';
 import { BUSINESS_CATEGORIES, POST_SUBTYPE_CONFIG } from '../constants';
 import { UserProfile, Business } from '../types';
+import { PostConfirmationModal } from './PostConfirmationModal';
 
 import { BusinessImportTool } from './BusinessImportTool';
 
@@ -212,6 +213,12 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
 
   const [logs, setLogs] = useState<any[]>([]);
   const [urgencyChangePost, setUrgencyChangePost] = useState<any>(null);
+  const [pendingRemoveMember, setPendingRemoveMember] = useState<{ id: string; name: string } | null>(null);
+  const [pendingDeleteMember, setPendingDeleteMember] = useState<{ id: string; name: string } | null>(null);
+  const [pendingDeletePost, setPendingDeletePost] = useState<{ id: string; title: string } | null>(null);
+  const [pendingRemoveBusiness, setPendingRemoveBusiness] = useState<Business | null>(null);
+  const [pendingCancelInvitation, setPendingCancelInvitation] = useState<{ id: string; label: string } | null>(null);
+  const [isProcessingDestructiveAction, setIsProcessingDestructiveAction] = useState(false);
 
   useEffect(() => {
     if (!currentCommunity?.id || currentCommunity.id === 'loading') return;
@@ -324,7 +331,6 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
   };
 
   const handleDeleteMember = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to PERMANENTLY delete this member from the community? This cannot be undone.')) return;
     try {
       await deleteMember(userId);
       setMemberSubView('list');
@@ -661,6 +667,68 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
     }
   };
 
+  const handleConfirmRemoveMember = async () => {
+    if (!pendingRemoveMember || isProcessingDestructiveAction) return;
+
+    setIsProcessingDestructiveAction(true);
+    try {
+      await handleRemoveMember(pendingRemoveMember.id);
+      setPendingRemoveMember(null);
+    } finally {
+      setIsProcessingDestructiveAction(false);
+    }
+  };
+
+  const handleConfirmDeleteMember = async () => {
+    if (!pendingDeleteMember || isProcessingDestructiveAction) return;
+
+    setIsProcessingDestructiveAction(true);
+    try {
+      await handleDeleteMember(pendingDeleteMember.id);
+      setPendingDeleteMember(null);
+    } finally {
+      setIsProcessingDestructiveAction(false);
+    }
+  };
+
+  const handleConfirmDeletePost = async () => {
+    if (!pendingDeletePost || isProcessingDestructiveAction) return;
+
+    setIsProcessingDestructiveAction(true);
+    try {
+      await handleDeletePost(pendingDeletePost.id);
+      setPendingDeletePost(null);
+    } finally {
+      setIsProcessingDestructiveAction(false);
+    }
+  };
+
+  const handleConfirmRemoveBusiness = async () => {
+    if (!pendingRemoveBusiness || isProcessingDestructiveAction) return;
+
+    setIsProcessingDestructiveAction(true);
+    try {
+      await handleRemoveBusiness(pendingRemoveBusiness);
+      setPendingRemoveBusiness(null);
+    } finally {
+      setIsProcessingDestructiveAction(false);
+    }
+  };
+
+  const handleConfirmCancelInvitation = async () => {
+    if (!pendingCancelInvitation || isProcessingDestructiveAction) return;
+
+    setIsProcessingDestructiveAction(true);
+    try {
+      await deleteDoc(doc(db, 'community_invitations', pendingCancelInvitation.id));
+      setPendingCancelInvitation(null);
+    } catch (error) {
+      console.error('Failed to cancel invitation:', error);
+    } finally {
+      setIsProcessingDestructiveAction(false);
+    }
+  };
+
   const tabs = [
     { id: 'members', label: 'Members', icon: Users, count: members.length > 0 ? members.length : undefined },
     { id: 'content', label: 'Content', icon: FileText },
@@ -670,6 +738,105 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
     { id: 'coverage', label: 'Coverage', icon: Map },
     { id: 'logs', label: 'Audit Logs', icon: History },
   ];
+
+  const destructiveConfirmationModals = (
+    <>
+      <PostConfirmationModal
+        isOpen={!!pendingRemoveMember}
+        ctaLabel="Deactivate Member"
+        postType="Member"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={pendingRemoveMember?.name || ''}
+        themeColor="bg-error"
+        customTitle="Confirm Member Deactivation"
+        customMessage="This member will lose access to this community immediately."
+        cancelLabel="Cancel"
+        confirmLabel={isProcessingDestructiveAction ? 'Processing...' : 'Deactivate'}
+        confirmDisabled={isProcessingDestructiveAction}
+        onConfirm={handleConfirmRemoveMember}
+        onCancel={() => {
+          if (isProcessingDestructiveAction) return;
+          setPendingRemoveMember(null);
+        }}
+      />
+
+      <PostConfirmationModal
+        isOpen={!!pendingDeleteMember}
+        ctaLabel="Delete Member"
+        postType="Member"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={pendingDeleteMember?.name || ''}
+        themeColor="bg-error"
+        customTitle="Confirm Permanent Member Deletion"
+        customMessage="This action cannot be undone and permanently removes this member from the community records."
+        cancelLabel="Cancel"
+        confirmLabel={isProcessingDestructiveAction ? 'Processing...' : 'Delete'}
+        confirmDisabled={isProcessingDestructiveAction}
+        onConfirm={handleConfirmDeleteMember}
+        onCancel={() => {
+          if (isProcessingDestructiveAction) return;
+          setPendingDeleteMember(null);
+        }}
+      />
+
+      <PostConfirmationModal
+        isOpen={!!pendingDeletePost}
+        ctaLabel="Delete Post"
+        postType="Post"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={pendingDeletePost?.title || ''}
+        themeColor="bg-error"
+        customTitle="Confirm Post Deletion"
+        customMessage="This post will be removed from the community feed."
+        cancelLabel="Cancel"
+        confirmLabel={isProcessingDestructiveAction ? 'Processing...' : 'Delete'}
+        confirmDisabled={isProcessingDestructiveAction}
+        onConfirm={handleConfirmDeletePost}
+        onCancel={() => {
+          if (isProcessingDestructiveAction) return;
+          setPendingDeletePost(null);
+        }}
+      />
+
+      <PostConfirmationModal
+        isOpen={!!pendingRemoveBusiness}
+        ctaLabel="Remove Business"
+        postType="Business"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={pendingRemoveBusiness?.name || ''}
+        themeColor="bg-error"
+        customTitle="Confirm Business Removal"
+        customMessage="This business will be removed from the community directory."
+        cancelLabel="Cancel"
+        confirmLabel={isProcessingDestructiveAction ? 'Processing...' : 'Remove'}
+        confirmDisabled={isProcessingDestructiveAction}
+        onConfirm={handleConfirmRemoveBusiness}
+        onCancel={() => {
+          if (isProcessingDestructiveAction) return;
+          setPendingRemoveBusiness(null);
+        }}
+      />
+
+      <PostConfirmationModal
+        isOpen={!!pendingCancelInvitation}
+        ctaLabel="Cancel Invitation"
+        postType="Invitation"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={pendingCancelInvitation?.label || ''}
+        themeColor="bg-error"
+        customTitle="Confirm Invitation Cancellation"
+        customMessage="This pending invitation will be cancelled."
+        cancelLabel="Keep Invitation"
+        confirmLabel={isProcessingDestructiveAction ? 'Processing...' : 'Cancel Invitation'}
+        confirmDisabled={isProcessingDestructiveAction}
+        onConfirm={handleConfirmCancelInvitation}
+        onCancel={() => {
+          if (isProcessingDestructiveAction) return;
+          setPendingCancelInvitation(null);
+        }}
+      />
+    </>
+  );
 
   const renderCoverage = () => (
     <div className="space-y-8">
@@ -1142,13 +1309,13 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
                 </div>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => handleRemoveMember(selectedMember.user_id)}
+                    onClick={() => setPendingRemoveMember({ id: selectedMember.user_id, name: selectedMember.name || 'Community member' })}
                     className="px-4 py-2 bg-error/10 text-error text-xs font-bold rounded-full hover:bg-error/20 transition-all"
                   >
                     Deactivate
                   </button>
                   <button 
-                    onClick={() => handleDeleteMember(selectedMember.user_id)}
+                    onClick={() => setPendingDeleteMember({ id: selectedMember.user_id, name: selectedMember.name || 'Community member' })}
                     className="px-4 py-2 bg-error text-white text-xs font-bold rounded-full shadow-lg shadow-error/20 active:scale-95 transition-all"
                   >
                     Permanently Delete
@@ -1259,11 +1426,7 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
                       <button 
                         className="p-2 rounded-full hover:bg-error/10 text-error transition-colors"
                         title="Cancel Invitation"
-                        onClick={async () => {
-                          if (window.confirm('Cancel this invitation?')) {
-                            await deleteDoc(doc(db, 'community_invitations', inv.id));
-                          }
-                        }}
+                        onClick={() => setPendingCancelInvitation({ id: inv.id, label: inv.invited_user_id || 'Pending invite' })}
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -1408,7 +1571,7 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
                   </button>
                 )}
                 <button 
-                  onClick={() => handleRemoveBusiness(biz)}
+                  onClick={() => setPendingRemoveBusiness(biz)}
                   className="flex-1 py-3 rounded-xl bg-error/10 text-error text-xs font-bold hover:bg-error/20 active:scale-95 transition-all flex items-center justify-center gap-2 border border-error/20"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -1806,7 +1969,7 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
                           <Pin className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => handleDeletePost(notice.id)}
+                          onClick={() => setPendingDeletePost({ id: notice.id, title: notice.title || 'Untitled post' })}
                           className="p-2 rounded-full hover:bg-error/5 text-error"
                           title="Remove"
                         >
@@ -1938,6 +2101,7 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
 
   if (embedded) {
     return (
+      <>
       <div className="flex flex-col md:flex-row w-full gap-8">
         {/* Sidebar Nav - Simplified for embedded view */}
         <aside className="w-full md:w-64 space-y-2">
@@ -1992,6 +2156,8 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
           </AnimatePresence>
         </main>
       </div>
+      {destructiveConfirmationModals}
+      </>
     );
   }
 
@@ -2152,6 +2318,8 @@ export const ModerationCenter = forwardRef<ModerationCenterHandle, ModerationCen
           </motion.div>
         )}
       </AnimatePresence>
+
+      {destructiveConfirmationModals}
     </div>
   );
 });

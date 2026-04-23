@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Users, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, Camera, MapPin, User as UserIcon, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { usePlacesAutocomplete, geocodeByAddress } from '../hooks/usePlacesAutocomplete';
+import { PostConfirmationModal } from './PostConfirmationModal';
 
 type OnboardingStep = 'profile' | 'community';
 
@@ -105,6 +106,7 @@ export const Onboarding: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
 
   // Profile step validation
   const isProfileValid = fullName.trim().length > 0 && locationName.trim().length > 0 && locationLat !== 0;
@@ -230,8 +232,7 @@ export const Onboarding: React.FC = () => {
   }
 
   // Step 2: Create profile + community/membership
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirmSubmit = async () => {
     if (!user) return;
     if (mode === 'start' && !communityName.trim()) return;
     if (mode === 'join' && !inviteCode.trim()) return;
@@ -476,6 +477,16 @@ export const Onboarding: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handlePrepareSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    if (mode === 'start' && !communityName.trim()) return;
+    if (mode === 'join' && !inviteCode.trim()) return;
+
+    setError(null);
+    setShowSubmitConfirmation(true);
   };
 
   if (loading) {
@@ -729,7 +740,7 @@ export const Onboarding: React.FC = () => {
                       <button type="button" onClick={() => setStep('profile')} className="text-[10px] text-primary font-bold hover:underline">Edit</button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handlePrepareSubmit} className="space-y-6">
                       {mode === 'start' ? (
                         <div className="space-y-2">
                           <label className="text-[10px] font-black uppercase tracking-widest text-outline px-1">Community Name</label>
@@ -827,6 +838,29 @@ export const Onboarding: React.FC = () => {
                         <p className="text-xs text-error font-medium bg-error/5 p-3 rounded-xl border border-error/10">{error}</p>
                       )}
                     </form>
+
+                    <PostConfirmationModal
+                      isOpen={showSubmitConfirmation}
+                      ctaLabel={mode === 'start' ? 'Create & Launch' : 'Join Community'}
+                      postType={mode === 'start' ? 'Community' : 'Membership'}
+                      communityName={mode === 'start' ? (communityName.trim() || 'New Community') : (invitedCommunityName || 'Joined Community')}
+                      title={mode === 'start' ? communityName.trim() : inviteCode.trim()}
+                      themeColor={mode === 'start' ? 'bg-primary' : 'bg-blue-600'}
+                      customTitle={mode === 'start' ? 'Confirm Community Launch' : 'Confirm Join Community'}
+                      customMessage={
+                        mode === 'start'
+                          ? 'Confirm you want to create and launch this community.'
+                          : 'Confirm you want to join this community with the provided invite code.'
+                      }
+                      cancelLabel="No, cancel"
+                      confirmLabel={isSubmitting ? (mode === 'start' ? 'Launching...' : 'Joining...') : 'Yes, confirm'}
+                      confirmDisabled={isSubmitting}
+                      onConfirm={handleConfirmSubmit}
+                      onCancel={() => {
+                        if (isSubmitting) return;
+                        setShowSubmitConfirmation(false);
+                      }}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>

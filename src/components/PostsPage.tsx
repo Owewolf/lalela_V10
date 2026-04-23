@@ -24,6 +24,7 @@ import { useCommunity } from '../context/CommunityContext';
 import { useFirebase } from '../context/FirebaseContext';
 import { cn } from '../lib/utils';
 import { CommunityNotice } from '../types';
+import { PostConfirmationModal } from './PostConfirmationModal';
 
 const securityIcon = new L.DivIcon({
   className: 'custom-div-icon',
@@ -693,53 +694,24 @@ export const PostsPage: React.FC<PostsPageProps> = ({ onCreatePost, onEditPost, 
         <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
       </motion.button>
 
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {postToDelete && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setPostToDelete(null)}
-              className="absolute inset-0 bg-primary/20 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl border border-outline-variant/10 text-center space-y-6"
-            >
-              <div className="w-20 h-20 bg-error/10 rounded-full flex items-center justify-center mx-auto">
-                <AlertTriangle className="w-10 h-10 text-error" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-headline font-black text-primary leading-tight">Delete Post?</h3>
-                <p className="text-on-surface-variant font-medium text-sm">
-                  This action cannot be undone. This post will be permanently removed from the community feed.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => {
-                    removePost(postToDelete);
-                    setPostToDelete(null);
-                  }}
-                  className="w-full bg-error text-white py-4 rounded-full font-bold shadow-lg shadow-error/20 active:scale-95 transition-all"
-                >
-                  Yes, Delete Post
-                </button>
-                <button
-                  onClick={() => setPostToDelete(null)}
-                  className="w-full bg-surface-container-low text-primary py-4 rounded-full font-bold active:scale-95 transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <PostConfirmationModal
+        isOpen={!!postToDelete}
+        ctaLabel="Delete Post"
+        postType="Post"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={posts.find(p => p.id === postToDelete)?.title || ''}
+        themeColor="bg-error"
+        customTitle="Delete Post?"
+        customMessage="This action cannot be undone. This post will be permanently removed from the community feed."
+        cancelLabel="Cancel"
+        confirmLabel="Yes, delete"
+        onConfirm={() => {
+          if (!postToDelete) return;
+          removePost(postToDelete);
+          setPostToDelete(null);
+        }}
+        onCancel={() => setPostToDelete(null)}
+      />
     </div>
   );
 };

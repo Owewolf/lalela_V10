@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldAlert, Trash2, LogOut, AlertTriangle, X } from 'lucide-react';
+import { ShieldAlert, Trash2, LogOut } from 'lucide-react';
 import { useFirebase } from '../../context/FirebaseContext';
-import { motion, AnimatePresence } from 'motion/react';
+import { PostConfirmationModal } from '../PostConfirmationModal';
 
 export const DangerZoneSection: React.FC = () => {
   const { signOut, deleteAccount } = useFirebase();
@@ -34,6 +34,12 @@ export const DangerZoneSection: React.FC = () => {
         <h3 className="text-lg font-bold text-error">Account Management</h3>
       </div>
 
+      {error && (
+        <div className="p-4 bg-error/10 text-error rounded-2xl text-xs font-bold text-center">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="p-6 bg-white rounded-3xl border border-outline-variant/10 space-y-4 shadow-sm">
           <div className="space-y-1">
@@ -64,76 +70,25 @@ export const DangerZoneSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Confirmation Dialog */}
-      <AnimatePresence>
-        {showConfirmDelete && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-[3rem] p-8 max-w-md w-full shadow-2xl space-y-6 relative"
-            >
-              <button 
-                onClick={() => setShowConfirmDelete(false)}
-                className="absolute top-6 right-6 p-2 hover:bg-surface-container-low rounded-xl transition-colors"
-              >
-                <X className="w-5 h-5 text-outline" />
-              </button>
-
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-20 h-20 rounded-full bg-error/10 flex items-center justify-center text-error animate-pulse">
-                  <AlertTriangle className="w-10 h-10" />
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-2xl font-headline font-black text-primary tracking-tight">Are you absolutely sure?</h4>
-                  <p className="text-sm text-outline font-medium leading-relaxed">
-                    This will permanently remove your account and all associated data from the platform. 
-                    <span className="block mt-2 font-bold text-error uppercase tracking-widest text-[10px]">
-                      You will not be able to use this email to create a new account.
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              {error && (
-                <div className="p-4 bg-error/10 text-error rounded-2xl text-xs font-bold text-center">
-                  {error}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3">
-                <button 
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="w-full py-4 bg-error text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-error/20 hover:bg-error-dark transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isDeleting ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4" />
-                      Delete Everything
-                    </>
-                  )}
-                </button>
-                <button 
-                  onClick={() => setShowConfirmDelete(false)}
-                  disabled={isDeleting}
-                  className="w-full py-4 bg-surface-container-low text-primary rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-surface-container-high transition-all active:scale-95"
-                >
-                  Keep My Account
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <PostConfirmationModal
+        isOpen={showConfirmDelete}
+        ctaLabel="Delete Everything"
+        postType="Account"
+        communityName="Lalela"
+        title="Permanent Account Deletion"
+        themeColor="bg-error"
+        customTitle="Are you absolutely sure?"
+        customMessage="This will permanently remove your account and all associated data. You will not be able to use this email to create a new account."
+        cancelLabel="Keep My Account"
+        confirmLabel={isDeleting ? 'Deleting...' : 'Delete Everything'}
+        confirmDisabled={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => {
+          if (isDeleting) return;
+          setShowConfirmDelete(false);
+          setError(null);
+        }}
+      />
     </section>
   );
 };

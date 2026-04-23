@@ -8,6 +8,7 @@ import { useFirebase } from '../context/FirebaseContext';
 import { cn } from '../lib/utils';
 import { InteractiveCoverageMap } from './InteractiveCoverageMap';
 import { CommunityNotice } from '../types';
+import { PostConfirmationModal } from './PostConfirmationModal';
 
 const emergencyIcon = new L.DivIcon({
   className: 'custom-div-icon',
@@ -985,44 +986,24 @@ export const HomePage = ({
           </div>
         </section>
       )}
-      {/* Delete Confirmation Dialog */}
-      <AnimatePresence>
-        {postToDelete && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-6"
-            >
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-error/10 rounded-full flex items-center justify-center mx-auto">
-                  <AlertTriangle className="w-8 h-8 text-error" />
-                </div>
-                <h3 className="text-xl font-bold font-headline">Delete Post?</h3>
-                <p className="text-sm text-on-surface-variant">This action cannot be undone. The post will be permanently removed.</p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setPostToDelete(null)}
-                  className="flex-1 py-3 rounded-full font-bold text-sm bg-surface-container-high text-primary hover:bg-surface-container-highest transition-all active:scale-95"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    removePost(postToDelete);
-                    setPostToDelete(null);
-                  }}
-                  className="flex-1 py-3 rounded-full font-bold text-sm bg-error text-white hover:bg-error/90 transition-all active:scale-95"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <PostConfirmationModal
+        isOpen={!!postToDelete}
+        ctaLabel="Delete Post"
+        postType="Post"
+        communityName={currentCommunity?.name || 'Your Community'}
+        title={posts.find(p => p.id === postToDelete)?.title || ''}
+        themeColor="bg-error"
+        customTitle="Delete Post?"
+        customMessage="This action cannot be undone. This post will be permanently removed."
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (!postToDelete) return;
+          removePost(postToDelete);
+          setPostToDelete(null);
+        }}
+        onCancel={() => setPostToDelete(null)}
+      />
     </main>
   );
 };

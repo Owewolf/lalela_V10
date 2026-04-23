@@ -14,6 +14,7 @@ import {
 import { useCommunity } from '../context/CommunityContext';
 import { cn } from '../lib/utils';
 import { Timestamp } from 'firebase/firestore';
+import { PostConfirmationModal } from './PostConfirmationModal';
 
 interface NotificationCenterProps {
   isOpen: boolean;
@@ -32,6 +33,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
   } = useCommunity();
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const [pendingDeleteNotificationId, setPendingDeleteNotificationId] = React.useState<string | null>(null);
+  const [pendingDeleteNotificationTitle, setPendingDeleteNotificationTitle] = React.useState('');
+  const [isDeletingNotification, setIsDeletingNotification] = React.useState(false);
 
   const handleAction = async (e: React.MouseEvent, notification: any, action: 'accept' | 'decline') => {
     e.stopPropagation();
@@ -78,6 +82,21 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
       case 'alert': return <AlertTriangle className="w-4 h-4 text-error" />;
       case 'system': return <Shield className="w-4 h-4 text-secondary" />;
       default: return <Bell className="w-4 h-4 text-outline" />;
+    }
+  };
+
+  const handleConfirmDeleteNotification = async () => {
+    if (!pendingDeleteNotificationId || isDeletingNotification) return;
+
+    setIsDeletingNotification(true);
+    try {
+      await deleteNotification(pendingDeleteNotificationId);
+      setPendingDeleteNotificationId(null);
+      setPendingDeleteNotificationTitle('');
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+    } finally {
+      setIsDeletingNotification(false);
     }
   };
 
@@ -152,7 +171,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteNotification(notification.id);
+                              setPendingDeleteNotificationId(notification.id);
+                              setPendingDeleteNotificationTitle(notification.title);
                             }}
                             className="p-1 opacity-0 group-hover:opacity-100 hover:bg-error/10 hover:text-error rounded-md transition-all"
                           >
@@ -224,6 +244,26 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
               </div>
             )}
           </motion.div>
+
+          <PostConfirmationModal
+            isOpen={!!pendingDeleteNotificationId}
+            ctaLabel="Delete Notification"
+            postType="Notification"
+            communityName="Lalela"
+            title={pendingDeleteNotificationTitle}
+            themeColor="bg-error"
+            customTitle="Confirm Notification Deletion"
+            customMessage="This notification will be permanently removed."
+            cancelLabel="Cancel"
+            confirmLabel={isDeletingNotification ? 'Deleting...' : 'Delete'}
+            confirmDisabled={isDeletingNotification}
+            onConfirm={handleConfirmDeleteNotification}
+            onCancel={() => {
+              if (isDeletingNotification) return;
+              setPendingDeleteNotificationId(null);
+              setPendingDeleteNotificationTitle('');
+            }}
+          />
         </>
       )}
     </AnimatePresence>
