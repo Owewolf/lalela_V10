@@ -61,12 +61,12 @@ const OnboardingPlacesInput: React.FC<{
         />
       </div>
       {status === 'OK' && ReactDOM.createPortal(
-        <ul className="bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/10 max-h-48 overflow-y-auto" style={dropdownStyle}>
+        <ul className="scrollbar-hide bg-white text-on-surface rounded-xl shadow-xl border border-outline-variant ring ring-outline-variant/20 max-h-48 overflow-y-auto" style={dropdownStyle}>
           {data.map(({ place_id, description }) => (
             <li
               key={place_id}
               onClick={() => handleSelect(description)}
-              className="px-4 py-3 text-sm cursor-pointer hover:bg-primary/5 transition-colors first:rounded-t-xl last:rounded-b-xl"
+              className="px-4 py-3 text-sm cursor-pointer hover:bg-surface-container/40 transition-colors first:rounded-t-xl last:rounded-b-xl border-b border-surface-container/20 last:border-0"
             >
               {description}
             </li>
