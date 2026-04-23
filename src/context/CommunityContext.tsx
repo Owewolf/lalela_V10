@@ -1707,12 +1707,14 @@ export const CommunityProvider: React.FC<{ children: ReactNode }> = ({ children 
     return conversationId;
   };
 
-  const sendMessage = async (text: string, type: 'text' | 'image' | 'system' = 'text') => {
+  const sendMessage = async (text: string, type: 'text' | 'image' | 'file' | 'system' = 'text', attachmentUrl?: string, fileName?: string) => {
     if (!user || !activeConversationId) return;
 
     const messageId = `msg_${Math.random().toString(36).substr(2, 9)}`;
     const messageDocRef = doc(db, 'conversations', activeConversationId, 'messages', messageId);
     const conversationDocRef = doc(db, 'conversations', activeConversationId);
+
+    const lastMessagePreview = type === 'image' ? '📷 Photo' : type === 'file' ? '📎 File' : text;
 
     const messageData = {
       id: messageId,
@@ -1721,6 +1723,8 @@ export const CommunityProvider: React.FC<{ children: ReactNode }> = ({ children 
       senderImage: userProfile?.profile_image || null,
       text,
       messageType: type,
+      attachment_url: attachmentUrl ?? null,
+      file_name: fileName ?? null,
       createdAt: serverTimestamp(),
       readBy: [user.uid],
       status: 'sent'
@@ -1728,7 +1732,7 @@ export const CommunityProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     // Update conversation last message
     await updateDoc(conversationDocRef, {
-      lastMessage: text,
+      lastMessage: lastMessagePreview,
       lastMessageAt: serverTimestamp(),
       [`unreadCount.${user.uid}`]: 0 // Reset unread for sender
     });

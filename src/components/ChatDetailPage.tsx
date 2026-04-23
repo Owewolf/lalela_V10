@@ -46,7 +46,7 @@ export const ChatDetailPage: React.FC<ChatDetailPageProps> = ({ chat, onBack }) 
   const name = member?.name || chat.otherParticipant?.name || chat.metadata?.title || 'Conversation';
   const image = member?.image || chat.otherParticipant?.profile_image || chat.metadata?.image;
   const role = member?.role || 'Member';
-  const composerOverlayClass = "fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]";
+  const composerOverlayClass = 'fixed left-3 right-3 z-40';
 
   const roleBadgeClass = (r: string) => {
     switch (r) {
@@ -170,6 +170,7 @@ export const ChatDetailPage: React.FC<ChatDetailPageProps> = ({ chat, onBack }) 
         {/* Composer */}
         <ChatComposer 
           onSend={(text) => sendMessage(text)}
+          onSendAttachment={(url, type) => sendMessage('', type, url)}
           onTyping={(typing) => setTypingStatus(chat.id, typing)}
           placeholder={chat.type === 'emergency' ? "Send emergency update..." : "Type a message..."}
           disabled={!!isChatDisabled}

@@ -260,6 +260,7 @@ export const EmergencyHub: React.FC<EmergencyHubProps> = ({ emergencyPost, onBac
           <ChatComposer 
             placeholder="Send a quick update..." 
             onSend={(text) => sendMessage(text)}
+            onSendAttachment={(url, type) => sendMessage('', type, url)}
             onSendLocation={handleSendLocation}
             onTyping={() => {}}
           />

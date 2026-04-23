@@ -52,15 +52,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSequent
       )}
 
       <div className={cn(
-        "relative px-4 py-2.5 rounded-2xl shadow-sm",
+        "relative rounded-2xl shadow-sm overflow-hidden",
+        message.messageType === 'image' ? 'p-0' : 'px-4 py-2.5',
         isMe 
           ? "bg-primary text-white rounded-tr-none" 
           : "bg-surface-container-high text-on-surface rounded-tl-none border border-outline-variant/5"
       )}>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
+        {message.messageType === 'image' && message.attachment_url ? (
+          <>
+            <a href={message.attachment_url} target="_blank" rel="noopener noreferrer">
+              <img
+                src={message.attachment_url}
+                alt="Shared photo"
+                className="block max-w-[240px] w-full object-cover"
+                loading="lazy"
+              />
+            </a>
+            {message.text && (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words px-4 pt-2">{message.text}</p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
+        )}
         
         <div className={cn(
           "flex items-center gap-1 mt-1 justify-end",
+          message.messageType === 'image' && "px-4 pb-2",
           isMe ? "text-white/60" : "text-outline"
         )}>
           <span className="text-[9px] font-medium">

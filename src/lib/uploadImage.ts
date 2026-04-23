@@ -1,9 +1,9 @@
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
-const MAX_SIZE = 4 * 1024 * 1024; // 4MB
+const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
-export type UploadFolder = 'profiles' | 'posts';
+export type UploadFolder = 'profiles' | 'posts' | 'chat';
 
 /**
  * Uploads an image file to Firebase Storage and returns its download URL.

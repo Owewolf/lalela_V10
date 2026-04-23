@@ -95,7 +95,9 @@ export interface Message {
   id: string;
   senderId: string;
   text: string;
-  messageType: 'text' | 'image' | 'system';
+  messageType: 'text' | 'image' | 'file' | 'system';
+  attachment_url?: string;
+  file_name?: string;
   createdAt: string;
   readBy: string[];
   status: 'sent' | 'delivered' | 'read';
@@ -450,7 +452,7 @@ export interface CommunityContextType {
   activeConversation: Conversation | null;
   messages: Message[];
   setActiveConversation: (conversationId: string | null) => void;
-  sendMessage: (text: string, type?: 'text' | 'image' | 'system') => Promise<void>;
+  sendMessage: (text: string, type?: 'text' | 'image' | 'file' | 'system', attachmentUrl?: string, fileName?: string) => Promise<void>;
   startConversation: (params: {
     participants: string[];
     type: 'direct' | 'listing' | 'notice' | 'community' | 'emergency';
